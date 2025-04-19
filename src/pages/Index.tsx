@@ -90,7 +90,7 @@ export default function Index() {
             loop
             playsInline
           >
-            <source src="/lovable-uploads/test.mp4" type="video/mp4" />
+            <source src="/lovable-uploads/testt.mp4" type="video/mp4" />
             Your browser does not support the video tag.
           </video>
         </div>
