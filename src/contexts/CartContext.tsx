@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer } from 'react';
-import { Product, ProductVariant, Cart, Order, Address, Customer } from '@/types';
+import { Product, ProductVariant, Cart, Order, Address, Customer, OrderStatus, ReturnRequest, ReturnStatus } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { 
@@ -20,7 +20,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
   const [orders, setOrders] = useLocalStorage<Order[]>("orders", []);
   const [customers, setCustomers] = useLocalStorage<any[]>("customers", []);
-  const [returnRequests, setReturnRequests] = useLocalStorage<any[]>("returnRequests", []);
+  const [returnRequests, setReturnRequests] = useLocalStorage<ReturnRequest[]>("returnRequests", []);
   
   const addItem = (product: Product, variant: ProductVariant, quantity: number) => {
     dispatch({ type: 'ADD_ITEM', payload: { product, variant, quantity } });
@@ -100,11 +100,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: 'Order not found',
         variant: 'destructive',
       });
-      return false;
+      return {} as ReturnRequest;
     }
 
     // Create a return request
-    const returnRequest = {
+    const returnRequest: ReturnRequest = {
       id: `return-${Date.now()}`,
       orderId,
       orderDate: order.date,
@@ -112,7 +112,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       customerEmail: order.customer.email,
       items,
       reason,
-      status: 'Requested',
+      status: 'Requested' as ReturnStatus,
       createdAt: new Date().toISOString(),
       scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // Schedule pickup in 2 days
     };
@@ -122,7 +122,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (o.id === orderId) {
         return {
           ...o,
-          status: 'Return Requested',
+          status: 'Return Requested' as OrderStatus,
           returnRequest: returnRequest.id
         };
       }

@@ -1,8 +1,8 @@
 
-import { OrderStatus } from "@/types";
+import { OrderStatus, ReturnStatus } from "@/types";
 
 interface StatusBadgeProps {
-  status: OrderStatus | string;
+  status: OrderStatus | ReturnStatus;
 }
 
 export const StatusBadge = ({ status }: StatusBadgeProps) => {
@@ -40,7 +40,7 @@ export const StatusBadge = ({ status }: StatusBadgeProps) => {
   };
 
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor()}`}>
+    <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${getStatusColor()}`}>
       {status}
     </span>
   );

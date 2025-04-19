@@ -1,5 +1,5 @@
 
-import { Cart, Address, Product, ProductVariant, Customer, Order } from "@/types";
+import { Cart, Address, Product, ProductVariant, Customer, Order, ReturnRequest } from "@/types";
 
 export interface CartContextType {
   cart: Cart;
@@ -14,6 +14,6 @@ export interface CartContextType {
   clearCart: () => void;
   itemCount: number;
   orders: Order[];
-  returnRequests: any[];
-  requestReturn: (orderId: string, items: any[], reason: string) => any;
+  returnRequests: ReturnRequest[];
+  requestReturn: (orderId: string, items: any[], reason: string) => ReturnRequest;
 }

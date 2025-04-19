@@ -8,14 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Search, RefreshCw } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ReturnRequest, ReturnStatus, OrderStatus } from "@/types";
 
 export const ReturnsTabContent = () => {
-  const [returnRequests, setReturnRequests] = useLocalStorage<any[]>("returnRequests", []);
+  const [returnRequests, setReturnRequests] = useLocalStorage<ReturnRequest[]>("returnRequests", []);
   const [orders, setOrders] = useLocalStorage<any[]>("orders", []);
-  const [viewingReturn, setViewingReturn] = useState<any | null>(null);
+  const [viewingReturn, setViewingReturn] = useState<ReturnRequest | null>(null);
   const { toast } = useToast();
 
-  const handleUpdateReturnStatus = (returnId: string, newStatus: string) => {
+  const handleUpdateReturnStatus = (returnId: string, newStatus: ReturnStatus) => {
     // Update the return request status
     const updatedRequests = returnRequests.map(req => {
       if (req.id === returnId) {
@@ -32,7 +33,7 @@ export const ReturnsTabContent = () => {
       if (returnRequest) {
         const updatedOrders = orders.map(order => {
           if (order.id === returnRequest.orderId) {
-            return { ...order, status: "Returned" };
+            return { ...order, status: "Returned" as OrderStatus };
           }
           return order;
         });

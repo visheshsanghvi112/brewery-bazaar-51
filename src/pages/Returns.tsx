@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
 import { useToast } from "@/components/ui/use-toast";
+import { OrderStatus } from "@/types";
 import {
   Card,
   CardContent,
@@ -83,7 +84,7 @@ export default function Returns() {
     // Request the return
     const return_request = requestReturn(selectedOrder, selectedItems, fullReason);
     
-    if (return_request) {
+    if (return_request && return_request.id) {
       setSelectedOrder(null);
       setSelectedItems([]);
       setReturnReason("wrong_size");
