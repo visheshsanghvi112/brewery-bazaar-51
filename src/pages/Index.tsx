@@ -32,11 +32,6 @@ export default function Index() {
     visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
   };
 
-  const buttonHover = {
-    rest: { scale: 1 },
-    hover: { scale: 1.05, transition: { duration: 0.2 } }
-  };
-
   const { toast } = useToast();
   const { theme } = useTheme();
   const isDarkTheme = theme === "dark";
@@ -99,15 +94,7 @@ export default function Index() {
           <RotatingImage />
         </div>
 
-        <div className="container relative z-20 mx-auto px-4 md:px-6 py-12">
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="max-w-xl"
-          >
-          </motion.div>
-        </div>
+        <div className="container relative z-20 mx-auto px-4 md:px-6 py-12" />
       </section>
 
       <BrandFeatures isMobile={isMobile} />
