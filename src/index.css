@@ -1,0 +1,176 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light mode variables with improved, more balanced colors */
+    --background: 0 0% 98%;
+    --foreground: 0 0% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 12%;
+
+    --primary: 215 25% 27%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 20% 92%;
+    --secondary-foreground: 215 25% 27%;
+
+    --muted: 210 20% 92%;
+    --muted-foreground: 215 10% 40%;
+
+    --accent: 210 20% 92%;
+    --accent-foreground: 215 25% 27%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 210 20% 84%;
+    --input: 210 20% 84%;
+    --ring: 215 25% 27%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* Keep existing dark mode variables */
+    --background: 220 10% 7%;
+    --foreground: 210 8% 98%;
+
+    --card: 222 12% 10%;
+    --card-foreground: 210 8% 98%;
+
+    --popover: 222 12% 7%;
+    --popover-foreground: 210 8% 98%;
+
+    --primary: 210 8% 98%;
+    --primary-foreground: 220 10% 7%;
+
+    --secondary: 217 15% 15%;
+    --secondary-foreground: 210 8% 98%;
+
+    --muted: 217 15% 15%;
+    --muted-foreground: 217 10% 65%;
+
+    --accent: 217 15% 15%;
+    --accent-foreground: 210 8% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 8% 98%;
+
+    --border: 217 15% 20%;
+    --input: 217 15% 20%;
+    --ring: 212 8% 80%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  /* Improved UI Classes */
+  .section-padding {
+    @apply py-16 md:py-24 px-4 md:px-8;
+  }
+  
+  .card-shadow {
+    @apply shadow-md hover:shadow-xl transition-shadow duration-300;
+  }
+  
+  .glass-effect {
+    @apply backdrop-blur-md bg-white/10 dark:bg-black/10;
+  }
+  
+  .hover-lift {
+    @apply transition-transform duration-300 hover:-translate-y-1;
+  }
+
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent;
+  }
+  
+  .gradient-bg {
+    @apply bg-gradient-to-br from-secondary/50 to-background;
+  }
+  
+  .gradient-card {
+    @apply bg-gradient-to-br from-card to-card/50 hover:from-card/80 hover:to-card/30 transition-colors;
+  }
+
+  /* Text treatments */
+  .text-gradient {
+    @apply bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent;
+  }
+
+  /* Enhanced elements */
+  .premium-card {
+    @apply bg-gradient-to-br from-card to-card/60 backdrop-blur-sm border border-white/10 dark:border-white/5 hover:shadow-lg transition-all duration-300;
+  }
+  
+  .premium-button {
+    @apply relative overflow-hidden transition-all duration-300 hover:scale-105;
+  }
+
+  /* Button enhancement */
+  .btn-gradient {
+    @apply bg-gradient-to-r from-primary to-primary/90 hover:opacity-90 transition-opacity;
+  }
+
+  .btn-outline-hover {
+    @apply border-primary/30 hover:bg-primary/10 transition-colors;
+  }
+  
+  /* Card animations */
+  .card-hover {
+    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+  }
+  
+  /* Image hover effects */
+  .img-zoom {
+    @apply transform transition-transform duration-500 hover:scale-110;
+  }
+
+  /* Navigation improvements */
+  .nav-link {
+    @apply relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-0 after:bg-primary after:transition-all after:duration-300 hover:after:w-full;
+  }
+
+  /* Mobile optimizations */
+  @media (max-width: 768px) {
+    h1 {
+      @apply text-3xl;
+    }
+    
+    h2 {
+      @apply text-2xl;
+    }
+  }
+}
+
+/* Mobile enhancements */
+@media (max-width: 768px) {
+  .product-card {
+    @apply w-full max-w-xs mx-auto;
+  }
+  
+  /* Enhanced scrollbar for mobile testimonials */
+  .snap-x {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .snap-x::-webkit-scrollbar {
+    display: none;
+  }
+}
