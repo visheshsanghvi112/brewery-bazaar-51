@@ -20,6 +20,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
   const [orders, setOrders] = useLocalStorage<Order[]>("orders", []);
   const [customers, setCustomers] = useLocalStorage<any[]>("customers", []);
+  const [returnRequests, setReturnRequests] = useLocalStorage<any[]>("returnRequests", []);
   
   const addItem = (product: Product, variant: ProductVariant, quantity: number) => {
     dispatch({ type: 'ADD_ITEM', payload: { product, variant, quantity } });
@@ -89,6 +90,57 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     return orderId;
   };
+
+  const requestReturn = (orderId: string, items: any[], reason: string) => {
+    // Find the order
+    const order = orders.find(o => o.id === orderId);
+    if (!order) {
+      toast({
+        title: 'Error',
+        description: 'Order not found',
+        variant: 'destructive',
+      });
+      return false;
+    }
+
+    // Create a return request
+    const returnRequest = {
+      id: `return-${Date.now()}`,
+      orderId,
+      orderDate: order.date,
+      customerName: order.customer.name,
+      customerEmail: order.customer.email,
+      items,
+      reason,
+      status: 'Requested',
+      createdAt: new Date().toISOString(),
+      scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // Schedule pickup in 2 days
+    };
+
+    // Update the orders status
+    const updatedOrders = orders.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          status: 'Return Requested',
+          returnRequest: returnRequest.id
+        };
+      }
+      return o;
+    });
+
+    // Update local storage
+    setReturnRequests([...returnRequests, returnRequest]);
+    setOrders(updatedOrders);
+
+    // Show success message
+    toast({
+      title: 'Return requested',
+      description: `Your return for order #${orderId} has been requested and will be picked up on ${new Date(returnRequest.scheduledDate).toLocaleDateString()}.`,
+    });
+
+    return returnRequest;
+  };
   
   const clearCart = () => {
     dispatch({ type: 'CLEAR_CART' });
@@ -107,7 +159,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBillingAddress,
     placeOrder,
     clearCart,
-    itemCount
+    itemCount,
+    orders,
+    returnRequests,
+    requestReturn
   };
   
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

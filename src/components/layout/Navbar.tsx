@@ -1,3 +1,4 @@
+
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SidebarNav } from "./SidebarNav";
 import { DesktopSidebar } from "./DesktopSidebar";
+import { useCart } from "@/contexts/CartContext";
 
 export default function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -21,6 +23,7 @@ export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { itemCount } = useCart();
 
   // Filter categories to only show T-shirts and Shorts
   const filteredCategories = categories.filter(
@@ -122,16 +125,23 @@ export default function Navbar() {
               <Search className="h-5 w-5" />
             </Link>
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hover:bg-primary/10"
-            asChild
-          >
-            <Link to="/cart" aria-label="Cart">
-              <ShoppingCart className="h-5 w-5" />
-            </Link>
-          </Button>
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="hover:bg-primary/10"
+              asChild
+            >
+              <Link to="/cart" aria-label="Cart">
+                <ShoppingCart className="h-5 w-5" />
+                {itemCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
+                    {itemCount}
+                  </span>
+                )}
+              </Link>
+            </Button>
+          </div>
           <ThemeToggle />
           
           {isAuthenticated ? (
@@ -149,6 +159,16 @@ export default function Navbar() {
                 <DropdownMenuItem asChild>
                   <Link to="/profile" className="cursor-pointer">
                     Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/orders" className="cursor-pointer">
+                    My Orders
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/returns" className="cursor-pointer">
+                    Returns & Exchanges
                   </Link>
                 </DropdownMenuItem>
                 {userRole === "admin" && (
