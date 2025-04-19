@@ -32,6 +32,8 @@ export const OrderStatusHandler = ({ orderId, currentStatus, onUpdateStatus }: O
             <SelectItem value="Shipped">Shipped</SelectItem>
             <SelectItem value="Delivered">Delivered</SelectItem>
             <SelectItem value="Cancelled">Cancelled</SelectItem>
+            <SelectItem value="Return Requested">Return Requested</SelectItem>
+            <SelectItem value="Returned">Returned</SelectItem>
           </SelectContent>
         </Select>
         <Button size="sm" onClick={handleUpdateStatus}>Update</Button>
