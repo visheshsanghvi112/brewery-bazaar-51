@@ -1,6 +1,5 @@
 
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
 import './index.css'
 import { app, auth, db } from './integrations/firebase/client.ts'
@@ -65,8 +64,4 @@ const initializeTheme = () => {
 
 initializeTheme();
 
-createRoot(document.getElementById("root")!).render(
-  <BrowserRouter>
-    <App />
-  </BrowserRouter>
-);
+createRoot(document.getElementById("root")!).render(<App />);

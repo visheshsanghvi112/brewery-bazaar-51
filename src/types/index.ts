@@ -80,10 +80,7 @@ export interface Customer {
 }
 
 // Order Types
-export type OrderStatus = 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' | 'Return Requested' | 'Returned';
-
-// Return Status Types
-export type ReturnStatus = 'Requested' | 'Approved' | 'In Progress' | 'Completed' | 'Rejected';
+export type OrderStatus = 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
 
 export interface OrderItem {
   product: Product;
@@ -105,19 +102,4 @@ export interface Order {
   date: string;
   paymentMethod: string;
   notes?: string;
-  returnRequest?: string;
-}
-
-// Return Request Type
-export interface ReturnRequest {
-  id: string;
-  orderId: string;
-  orderDate: string;
-  customerName: string;
-  customerEmail: string;
-  items: OrderItem[];
-  reason: string;
-  status: ReturnStatus;
-  createdAt: string;
-  scheduledDate: string;
 }

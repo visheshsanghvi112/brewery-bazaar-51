@@ -1,13 +1,12 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart, Package, ShoppingCart, Users, RefreshCw } from "lucide-react";
+import { BarChart, Package, ShoppingCart, Users } from "lucide-react";
 import { DashboardTabContent } from "./DashboardTabContent";
 import { ProductsTabContent } from "./ProductsTabContent";
 import { OrdersTabContent } from "./OrdersTabContent";
 import { CustomersTabContent } from "./CustomersTabContent";
 import { ProductFormDialog } from "./ProductFormDialog";
-import { ReturnsTabContent } from "./ReturnsTabContent";
 import { AdminProvider, colorOptions } from "@/contexts/AdminContext";
 import { useAdmin } from "@/contexts/AdminContext";
 
@@ -58,10 +57,6 @@ export function AdminTabs() {
             <ShoppingCart className="h-4 w-4" />
             Orders
           </TabsTrigger>
-          <TabsTrigger value="returns" className="flex items-center gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Returns
-          </TabsTrigger>
           <TabsTrigger value="customers" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Customers
@@ -95,11 +90,6 @@ export function AdminTabs() {
             orders={orders}
             setViewingOrder={setViewingOrder}
           />
-        </TabsContent>
-
-        {/* Returns Tab */}
-        <TabsContent value="returns">
-          <ReturnsTabContent />
         </TabsContent>
         
         {/* Customers Tab */}

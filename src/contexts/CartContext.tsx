@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useReducer } from 'react';
-import { Product, ProductVariant, Cart, Order, Address, Customer, OrderStatus, ReturnRequest, ReturnStatus } from '@/types';
+import { Product, ProductVariant, Cart, Order, Address, Customer } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { 
@@ -20,7 +20,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const { toast } = useToast();
   const [orders, setOrders] = useLocalStorage<Order[]>("orders", []);
   const [customers, setCustomers] = useLocalStorage<any[]>("customers", []);
-  const [returnRequests, setReturnRequests] = useLocalStorage<ReturnRequest[]>("returnRequests", []);
   
   const addItem = (product: Product, variant: ProductVariant, quantity: number) => {
     dispatch({ type: 'ADD_ITEM', payload: { product, variant, quantity } });
@@ -90,57 +89,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     return orderId;
   };
-
-  const requestReturn = (orderId: string, items: any[], reason: string) => {
-    // Find the order
-    const order = orders.find(o => o.id === orderId);
-    if (!order) {
-      toast({
-        title: 'Error',
-        description: 'Order not found',
-        variant: 'destructive',
-      });
-      return {} as ReturnRequest;
-    }
-
-    // Create a return request
-    const returnRequest: ReturnRequest = {
-      id: `return-${Date.now()}`,
-      orderId,
-      orderDate: order.date,
-      customerName: order.customer.name,
-      customerEmail: order.customer.email,
-      items,
-      reason,
-      status: 'Requested' as ReturnStatus,
-      createdAt: new Date().toISOString(),
-      scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // Schedule pickup in 2 days
-    };
-
-    // Update the orders status
-    const updatedOrders = orders.map(o => {
-      if (o.id === orderId) {
-        return {
-          ...o,
-          status: 'Return Requested' as OrderStatus,
-          returnRequest: returnRequest.id
-        };
-      }
-      return o;
-    });
-
-    // Update local storage
-    setReturnRequests([...returnRequests, returnRequest]);
-    setOrders(updatedOrders);
-
-    // Show success message
-    toast({
-      title: 'Return requested',
-      description: `Your return for order #${orderId} has been requested and will be picked up on ${new Date(returnRequest.scheduledDate).toLocaleDateString()}.`,
-    });
-
-    return returnRequest;
-  };
   
   const clearCart = () => {
     dispatch({ type: 'CLEAR_CART' });
@@ -159,10 +107,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setBillingAddress,
     placeOrder,
     clearCart,
-    itemCount,
-    orders,
-    returnRequests,
-    requestReturn
+    itemCount
   };
   
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
