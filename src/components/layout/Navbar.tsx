@@ -15,7 +15,7 @@ import {
 import { SidebarNav } from "./SidebarNav";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { useCart } from "@/contexts/CartContext";
-import { auth } from "@/lib/firebase";
+import { auth } from "@/integrations/firebase/client";
 
 export default function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
