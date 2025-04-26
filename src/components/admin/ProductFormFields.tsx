@@ -82,7 +82,7 @@ export const ProductFormFields = ({
             type="number"
             value={formProduct.originalPrice ? formProduct.originalPrice / 100 : ""}
             onChange={(e) => {
-              const value = e.target.value === "" ? undefined : Number(e.target.value) * 100;
+              const value = e.target.value === "" ? null : Number(e.target.value) * 100;
               setFormProduct({ ...formProduct, originalPrice: value });
             }}
             placeholder="0.00"
@@ -95,11 +95,11 @@ export const ProductFormFields = ({
           <div className="flex items-center space-x-2 pt-2">
             <Switch
               id="inStock"
-              checked={formProduct.inStock}
+              checked={formProduct.inStock !== false}
               onCheckedChange={(checked) => setFormProduct({ ...formProduct, inStock: checked })}
             />
             <Label htmlFor="inStock" className="cursor-pointer">
-              {formProduct.inStock ? "Available" : "Out of stock"}
+              {formProduct.inStock !== false ? "Available" : "Out of stock"}
             </Label>
           </div>
         </div>

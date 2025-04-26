@@ -37,17 +37,28 @@ export const updateProductInFirestore = async (productId: string, productData: P
     const { id, ...dataToUpdate } = productData as any;
     
     // Create a clean update object without undefined values
+    // Also convert empty strings to null for Firestore
     const cleanUpdateData = Object.entries(dataToUpdate).reduce((acc, [key, value]) => {
-      // Skip undefined values as Firestore doesn't accept them
       if (value !== undefined) {
-        acc[key] = value;
+        // Convert empty strings to null
+        if (value === "" && key !== "name" && key !== "description" && key !== "category") {
+          acc[key] = null;
+        } else {
+          acc[key] = value;
+        }
       }
       return acc;
     }, {} as Record<string, any>);
     
+    // Special handling for originalPrice - make sure it's either a number or null
+    if (cleanUpdateData.originalPrice === 0 || cleanUpdateData.originalPrice === "") {
+      cleanUpdateData.originalPrice = null;
+    }
+    
     // Add the updated timestamp
     cleanUpdateData.updatedAt = new Date();
     
+    console.log("Clean update data for Firestore:", cleanUpdateData);
     await updateDoc(productRef, cleanUpdateData);
     
     console.log("Product updated successfully: ", productId);

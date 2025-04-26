@@ -1,4 +1,3 @@
-
 import { createContext, useContext, ReactNode, useState, useEffect } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Product, Order, OrderStatus } from "@/types";
@@ -134,7 +133,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       description: "",
       price: 2000,
       category: "t-shirts",
-      images: ["https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg"], // Default image
+      images: ["https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg"],
       variants: [
         {
           id: "var1",
@@ -149,7 +148,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       inStock: true
     });
     setProductImages([null]);
-    setProductImageUrls(["https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg"]); // Set default image
+    setProductImageUrls(["https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg"]);
     setShowProductForm(true);
   };
 
@@ -192,23 +191,22 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Always ensure there is at least one image (either from productImageUrls or default)
-    const images = productImageUrls.length > 0 
-      ? productImageUrls 
-      : ["https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg"];
-
-    // Create a clean product object without undefined values
-    const productToSave: Partial<Product> = {
-      ...formProduct,
-      images
-    };
-
-    // If originalPrice is empty string or 0, set to null to avoid Firestore errors
-    if (!productToSave.originalPrice) {
-      productToSave.originalPrice = null;
-    }
-
     try {
+      const images = productImageUrls.length > 0 
+        ? productImageUrls 
+        : ["https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg"];
+
+      const productToSave: Partial<Product> = {
+        ...formProduct,
+        images
+      };
+
+      if (!productToSave.originalPrice || productToSave.originalPrice === 0) {
+        productToSave.originalPrice = null;
+      }
+      
+      console.log("Product prepared for saving:", productToSave);
+
       if (editingProduct) {
         console.log("Updating existing product:", editingProduct.id);
         await updateProductInFirestore(editingProduct.id, productToSave);
@@ -241,6 +239,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       }
       
       setShowProductForm(false);
+      const updatedProducts = await getProductsFromFirestore();
+      setProducts(updatedProducts);
     } catch (error) {
       console.error("Error saving product:", error);
       toast({
