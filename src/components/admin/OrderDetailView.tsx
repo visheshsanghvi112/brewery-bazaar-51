@@ -7,13 +7,14 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { XCircle, Printer, Mail, FileText, RefreshCw } from "lucide-react";
-import { Order } from "@/types";
+import { Order, OrderStatus, ReturnStatus } from "@/types";
 import { OrderStatusHandler } from "./OrderStatusHandler";
 import { OrderFulfillmentTracker } from "./OrderFulfillmentTracker";
 import { StatusBadge } from "./StatusBadge";
 import { sendOrderStatusUpdateEmail } from "@/utils/emailService";
 import { useToast } from "@/hooks/use-toast";
 import { generateShippingLabel } from "@/utils/shippingLabels";
+import { Badge } from "@/components/ui/badge";
 
 interface OrderDetailViewProps {
   order: Order;
@@ -36,8 +37,8 @@ export function OrderDetailView({
   const { toast } = useToast();
 
   // Handle status update
-  const handleStatusUpdate = (orderId: string, status: string) => {
-    onUpdateOrder(orderId, { status: status as any });
+  const handleStatusUpdate = (orderId: string, status: OrderStatus) => {
+    onUpdateOrder(orderId, { status });
     
     toast({
       title: "Order updated",
@@ -331,7 +332,7 @@ export function OrderDetailView({
                 {order.lastEmailNotification ? (
                   <div className="space-y-2">
                     <p><strong>Last Sent:</strong> {new Date(order.lastEmailNotification.date).toLocaleString()}</p>
-                    <p><strong>Status:</strong> <StatusBadge status={order.lastEmailNotification.status} /></p>
+                    <p><strong>Status:</strong> <StatusBadge status={order.lastEmailNotification.status as OrderStatus} /></p>
                     <Button 
                       variant="outline" 
                       className="w-full mt-2"
@@ -385,22 +386,22 @@ export function OrderDetailView({
                           <p className="text-sm font-medium">Customer Segment</p>
                           <div className="mt-1">
                             {order.customer.segment === "new" && (
-                              <Badge className="bg-blue-100 text-blue-800 border-blue-200">
+                              <Badge variant="info">
                                 New Customer
                               </Badge>
                             )}
                             {order.customer.segment === "regular" && (
-                              <Badge className="bg-green-100 text-green-800 border-green-200">
+                              <Badge variant="success">
                                 Regular Customer
                               </Badge>
                             )}
                             {order.customer.segment === "loyal" && (
-                              <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                              <Badge variant="warning">
                                 Loyal Customer
                               </Badge>
                             )}
                             {order.customer.segment === "vip" && (
-                              <Badge className="bg-amber-100 text-amber-800 border-amber-200">
+                              <Badge variant="warning">
                                 VIP Customer
                               </Badge>
                             )}

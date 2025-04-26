@@ -1,5 +1,5 @@
 
-import { Order, ReturnRequest, ReturnStatus, EmailStatus, OrderStatus } from "@/types";
+import { Order, ReturnRequest, ReturnStatus, EmailStatus, OrderStatus, RefundStatus } from "@/types";
 import { generateBatchShippingLabels } from "./shippingLabels";
 import { sendOrderStatusUpdateEmail } from "./emailService";
 import { generateReturnLabel } from "./returnLabels";
@@ -139,13 +139,13 @@ export const processBatchReturns = async (
   
   switch (action) {
     case "update_status":
-      return updateReturnStatuses(returnsToProcess, value as ReturnStatus);
+      return bulkUpdateReturnStatus(returnsToProcess, value as ReturnStatus);
       
     case "generate_labels":
-      return generateReturnLabels(returnsToProcess);
+      return bulkGenerateReturnLabels(returnsToProcess);
       
     case "process_refunds":
-      return processReturnRefunds(returnsToProcess);
+      return bulkProcessRefunds(returnsToProcess);
       
     case "send_notifications":
       return sendReturnNotifications(returnsToProcess);
@@ -200,13 +200,13 @@ export const bulkGenerateReturnLabels = async (
 export const bulkProcessRefunds = (
   returns: ReturnRequest[]
 ): ReturnRequest[] => {
-  // Only process returns that are in 'Completed' status
+  // Only process returns that are in 'Completed' or 'Approved' status
   return returns.map(returnReq => {
     if (returnReq.status === "Completed" || returnReq.status === "Approved") {
       const refundAmount = returnReq.items.reduce((sum, item) => sum + item.price, 0);
       return {
         ...returnReq,
-        refundStatus: "Completed" as ReturnStatus,
+        refundStatus: "Completed" as RefundStatus,
         refundAmount,
         refundDate: new Date().toISOString()
       };
@@ -226,3 +226,6 @@ const sendReturnNotifications = async (returns: ReturnRequest[]): Promise<Return
     lastNotificationDate: new Date().toISOString()
   }));
 };
+
+// Export the functions that ReturnsTabContent needs
+export { bulkProcessRefunds, bulkUpdateReturnStatus, bulkGenerateReturnLabels as bulkGenerateReturnLabels };
