@@ -1,4 +1,3 @@
-
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -16,6 +15,7 @@ import {
 import { SidebarNav } from "./SidebarNav";
 import { DesktopSidebar } from "./DesktopSidebar";
 import { useCart } from "@/contexts/CartContext";
+import { auth } from "@/lib/firebase";
 
 export default function Navbar() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -30,26 +30,44 @@ export default function Navbar() {
     category => category.slug === "t-shirts" || category.slug === "shorts"
   );
 
-  // Check authentication status
+  // Update authentication status check
   useEffect(() => {
-    const role = localStorage.getItem("userRole");
-    setUserRole(role);
-    setIsAuthenticated(!!role);
-  }, [location.pathname]); // Re-check when route changes
-
-  const handleLogout = () => {
-    localStorage.removeItem("userRole");
-    localStorage.removeItem("userName");
-    localStorage.removeItem("userEmail");
-    setIsAuthenticated(false);
-    setUserRole(null);
-    
-    toast({
-      title: "Logged out",
-      description: "You have been successfully logged out",
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      setIsAuthenticated(!!currentUser);
+      if (currentUser) {
+        const role = localStorage.getItem("userRole");
+        setUserRole(role);
+      } else {
+        setUserRole(null);
+      }
     });
-    
-    navigate("/login");
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      localStorage.removeItem("userRole");
+      localStorage.removeItem("userName");
+      localStorage.removeItem("userEmail");
+      setIsAuthenticated(false);
+      setUserRole(null);
+      
+      toast({
+        title: "Logged out",
+        description: "You have been successfully logged out",
+      });
+      
+      navigate("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({
+        title: "Logout failed",
+        description: "An error occurred during logout",
+        variant: "destructive",
+      });
+    }
   };
 
   return (

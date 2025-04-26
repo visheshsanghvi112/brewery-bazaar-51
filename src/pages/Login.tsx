@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -24,14 +23,12 @@ const Login = () => {
   const { setAdminStatus } = useAdmin();
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  // Listen for authentication state changes
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         console.log("User is signed in", user);
         setCurrentUser(user);
         
-        // Log user details to console
         console.log({
           uid: user.uid,
           email: user.email,
@@ -46,13 +43,11 @@ const Login = () => {
       }
     });
 
-    // Clean up subscription
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
     const checkAuth = async () => {
-      // Check Firebase auth
       const currentFirebaseUser = auth.currentUser;
       if (currentFirebaseUser) {
         if (currentFirebaseUser.email === "admin@test.com") {
@@ -80,90 +75,67 @@ const Login = () => {
     
     console.log("Login attempt on Login page:", { email: trimmedEmail });
     
-    if (trimmedEmail === "admin@test.com" && trimmedPassword === "admin") {
-      console.log("Admin credentials detected, setting admin status");
-      setAdminStatus(true);
-      localStorage.setItem("userRole", "admin");
-      
-      // Try to create admin in Firebase
-      try {
-        await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
-      } catch (error: any) {
-        console.log("Admin user may not exist in Firebase yet:", error.code);
-      }
-      
-      toast({
-        title: "Welcome back, Admin!",
-        description: "You have successfully logged in to your account.",
-      });
-      
-      setTimeout(() => {
-        navigate("/admin");
-        setIsLoading(false);
-      }, 100);
-    } 
-    else if (trimmedEmail && trimmedPassword) {
-      try {
+    try {
+      if (trimmedEmail === "admin@test.com" && trimmedPassword === "admin") {
+        console.log("Admin credentials detected, setting admin status");
+        setAdminStatus(true);
+        localStorage.setItem("userRole", "admin");
+        localStorage.setItem("userName", "Admin");
+        localStorage.setItem("userEmail", trimmedEmail);
+        
         await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword)
-          .then((userCredential) => {
-            const user = userCredential.user;
-            localStorage.setItem("userRole", "user");
-            localStorage.setItem("userName", user.displayName || '');
-            localStorage.setItem("userEmail", user.email || '');
-            
-            toast({
-              title: "Welcome back!",
-              description: "You have successfully logged in to your account.",
-            });
-            
-            navigate("/profile");
-            return;
-          })
           .catch((error) => {
-            console.error("Firebase auth failed:", error.code, error.message);
-            
-            toast({
-              title: "Login failed",
-              description: error.message,
-              variant: "destructive",
-            });
+            console.log("Admin user may not exist in Firebase yet:", error.code);
           });
-      } catch (error) {
-        console.error("Login error:", error);
+        
         toast({
-          title: "Login failed",
-          description: "An unexpected error occurred. Please try again.",
-          variant: "destructive",
+          title: "Welcome back, Admin!",
+          description: "You have successfully logged in to your account.",
         });
-      } finally {
-        setIsLoading(false);
+        
+        navigate("/admin");
+      } 
+      else if (trimmedEmail && trimmedPassword) {
+        const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
+        const user = userCredential.user;
+        
+        localStorage.setItem("userRole", "user");
+        localStorage.setItem("userName", user.displayName || '');
+        localStorage.setItem("userEmail", user.email || '');
+        
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully logged in to your account.",
+        });
+        
+        navigate("/profile");
       }
-    } else {
+    } catch (error: any) {
+      console.error("Login error:", error);
       toast({
         title: "Login failed",
-        description: "Please check your email and password and try again.",
+        description: error.message,
         variant: "destructive",
       });
+    } finally {
       setIsLoading(false);
     }
   };
-  
+
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     
     try {
-      // Use the pre-configured provider from client.ts
       await signInWithPopup(auth, googleProvider)
         .then((result) => {
           const user = result.user;
           const credential = GoogleAuthProvider.credentialFromResult(result);
           const token = credential?.accessToken;
           
-          // Log successful sign-in details
           console.log("Google Sign In Success:", {
             user: user.displayName,
             email: user.email,
-            token: token?.substring(0, 10) + '...' // Only log part of the token for security
+            token: token?.substring(0, 10) + '...'
           });
           
           localStorage.setItem("userRole", "user");
@@ -180,7 +152,6 @@ const Login = () => {
         .catch((error) => {
           console.error("Firebase Google auth failed:", error.code, error.message);
           
-          // Show a more helpful error message based on the error code
           if (error.code === 'auth/unauthorized-domain') {
             toast({
               title: "Authentication Error",
