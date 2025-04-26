@@ -73,12 +73,11 @@ const Login = () => {
     const trimmedEmail = email.trim();
     const trimmedPassword = password.trim();
     
-    console.log("Login attempt on Login page:", { email: trimmedEmail });
+    console.log("Login attempt:", { email: trimmedEmail });
     
     try {
       if (trimmedEmail === "admin@test.com" && trimmedPassword === "admin") {
-        console.log("Admin credentials detected, setting admin status");
-        setAdminStatus(true);
+        console.log("Admin credentials detected");
         localStorage.setItem("userRole", "admin");
         localStorage.setItem("userName", "Admin");
         localStorage.setItem("userEmail", trimmedEmail);

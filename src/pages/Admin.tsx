@@ -1,10 +1,9 @@
 
 import { useState, useEffect } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { useAdmin as useAdminAuth } from "@/hooks/use-admin";
-import { AdminLogin } from "@/components/admin/AdminLogin";
+import { useAdmin } from "@/hooks/use-admin";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import AdminDashboard from "./admin/Dashboard";
 import AdminProducts from "./admin/Products";
@@ -14,52 +13,30 @@ import AdminCustomers from "./admin/Customers";
 import { AdminProvider } from "@/contexts/AdminContext";
 
 export default function Admin() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const { isAdmin, setAdminStatus } = useAdminAuth();
+  const { isAdmin } = useAdmin();
   
-  // Check if user is already logged in
+  // Redirect non-admin users to login
   useEffect(() => {
-    if (isAdmin) {
-      setIsLoggedIn(true);
-    }
-  }, [isAdmin]);
-  
-  // Show login message with demo credentials if not logged in
-  useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isAdmin) {
       toast({
-        title: "Admin Dashboard",
-        description: "Use admin@test.com / admin to log in",
+        title: "Access Denied",
+        description: "Please login with an admin account to access this page.",
+        variant: "destructive",
       });
+      navigate("/login");
     }
-  }, [isLoggedIn, toast]);
-  
-  // Handle logout
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setAdminStatus(false);
-    toast({
-      title: "Logout Successful",
-      description: "You have been logged out of the admin dashboard.",
-    });
-  };
+  }, [isAdmin, navigate, toast]);
 
-  // If not logged in, show login form
-  if (!isLoggedIn) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-end mb-6">
-          <ThemeToggle />
-        </div>
-        <AdminLogin onLoginSuccess={() => setIsLoggedIn(true)} />
-      </div>
-    );
+  // If not admin, don't render anything while redirecting
+  if (!isAdmin) {
+    return null;
   }
 
   return (
     <AdminProvider>
-      <AdminLayout onLogout={handleLogout}>
+      <AdminLayout onLogout={() => navigate("/login")}>
         <Routes>
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />
