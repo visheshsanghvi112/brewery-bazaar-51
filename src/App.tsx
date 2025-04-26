@@ -1,4 +1,3 @@
-
 import { useState, Suspense, useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
@@ -72,7 +71,7 @@ function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Index />} />
-              <Route path="/admin" element={<Admin />} />
+              <Route path="/admin/*" element={<Admin />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<Login />} />
