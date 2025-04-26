@@ -139,7 +139,8 @@ export const processBatchReturns = async (
   
   switch (action) {
     case "update_status":
-      return bulkUpdateReturnStatus(returnsToProcess, value as ReturnStatus);
+      const result = await bulkUpdateReturnStatus(returnsToProcess, value as ReturnStatus);
+      return result.updatedReturns;
       
     case "generate_labels":
       return bulkGenerateReturnLabels(returnsToProcess);
@@ -181,7 +182,7 @@ export const bulkUpdateReturnStatus = async (
 };
 
 /**
- * Generate return labels in bulk - this is the one needed by ReturnsTabContent
+ * Generate return labels in bulk
  */
 export const bulkGenerateReturnLabels = async (
   returns: ReturnRequest[]
@@ -195,7 +196,7 @@ export const bulkGenerateReturnLabels = async (
 };
 
 /**
- * Process return refunds in bulk - this is the one needed by ReturnsTabContent
+ * Process return refunds in bulk
  */
 export const bulkProcessRefunds = (
   returns: ReturnRequest[]
@@ -226,6 +227,3 @@ const sendReturnNotifications = async (returns: ReturnRequest[]): Promise<Return
     lastNotificationDate: new Date().toISOString()
   }));
 };
-
-// Export the functions that ReturnsTabContent needs
-export { bulkProcessRefunds, bulkUpdateReturnStatus, bulkGenerateReturnLabels as bulkGenerateReturnLabels };
