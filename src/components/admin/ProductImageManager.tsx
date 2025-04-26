@@ -16,6 +16,8 @@ export const ProductImageManager = ({
   handleFileChange,
   handleRemoveImage
 }: ProductImageManagerProps) => {
+  console.log("ProductImageManager rendered with URLs:", productImageUrls);
+  
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
       {productImageUrls.map((url, idx) => (
@@ -33,15 +35,14 @@ export const ProductImageManager = ({
         </div>
       ))}
       
-      {productImages.map((file, idx) => (
-        <div key={`upload-${idx}`} className={productImageUrls.length > 0 && idx === 0 ? "hidden" : ""}>
-          <FileInput
-            onFileChange={(file) => handleFileChange(idx, file)}
-            buttonText="Add Image"
-            preview={file ? URL.createObjectURL(file) : undefined}
-          />
-        </div>
-      ))}
+      {/* Always show at least one upload slot */}
+      <div className={productImageUrls.length > 0 ? "mt-2" : ""}>
+        <FileInput
+          onFileChange={(file) => handleFileChange(productImages.length - 1, file)}
+          buttonText="Add Image"
+          preview={null}
+        />
+      </div>
     </div>
   );
 };

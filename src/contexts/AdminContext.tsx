@@ -134,7 +134,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       description: "",
       price: 2000,
       category: "t-shirts",
-      images: [],
+      images: ["https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg"], // Default image
       variants: [
         {
           id: "var1",
@@ -149,11 +149,12 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       inStock: true
     });
     setProductImages([null]);
-    setProductImageUrls([]);
+    setProductImageUrls(["https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg"]); // Set default image
     setShowProductForm(true);
   };
 
   const handleEditProduct = (product: Product) => {
+    console.log("Editing product:", product);
     setEditingProduct(product);
     setFormProduct({...product});
     setProductImages([null]);
@@ -191,14 +192,24 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Always ensure there is at least one image (either from productImageUrls or default)
+    const images = productImageUrls.length > 0 
+      ? productImageUrls 
+      : ["https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg"];
+
+    const productToSave = {
+      ...formProduct,
+      images
+    };
+
     try {
       if (editingProduct) {
         console.log("Updating existing product:", editingProduct.id);
-        await updateProductInFirestore(editingProduct.id, formProduct as Product);
+        await updateProductInFirestore(editingProduct.id, productToSave as Product);
         
         setProducts(products.map(p => 
           p.id === editingProduct.id 
-            ? { ...formProduct as Product, id: editingProduct.id } 
+            ? { ...productToSave as Product, id: editingProduct.id } 
             : p
         ));
         
@@ -208,10 +219,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         });
       } else {
         console.log("Adding new product");
-        const newProductId = await addProductToFirestore(formProduct as Omit<Product, 'id'>);
+        const newProductId = await addProductToFirestore(productToSave as Omit<Product, 'id'>);
         
         const newProduct = {
-          ...formProduct as Product,
+          ...productToSave as Product,
           id: newProductId,
         };
         

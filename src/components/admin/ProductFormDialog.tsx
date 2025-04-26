@@ -45,6 +45,8 @@ export const ProductFormDialog = ({
   handleRemoveImage,
   colorOptions
 }: ProductFormDialogProps) => {
+  console.log("ProductFormDialog rendered with:", { formProduct, productImageUrls, showProductForm });
+  
   return (
     <Dialog open={showProductForm} onOpenChange={setShowProductForm}>
       <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto bg-card/95 backdrop-blur-lg">

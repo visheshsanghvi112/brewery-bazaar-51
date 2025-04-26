@@ -6,6 +6,7 @@ import { Product } from "@/types";
 // Add new product to Firestore
 export const addProductToFirestore = async (productData: Omit<Product, 'id'>): Promise<string> => {
   try {
+    console.log("Adding product to Firestore:", productData);
     const docRef = await addDoc(collection(db, "products"), {
       ...productData,
       createdAt: new Date(),
@@ -23,6 +24,7 @@ export const addProductToFirestore = async (productData: Omit<Product, 'id'>): P
 // Update existing product in Firestore
 export const updateProductInFirestore = async (productId: string, productData: Partial<Product>): Promise<void> => {
   try {
+    console.log("Updating product in Firestore:", { productId, productData });
     const productRef = doc(db, "products", productId);
     
     // Verify the document exists first
@@ -31,8 +33,11 @@ export const updateProductInFirestore = async (productId: string, productData: P
       throw new Error(`Product with ID ${productId} does not exist`);
     }
     
+    // Remove id if present to avoid overwriting it
+    const { id, ...dataToUpdate } = productData as any;
+    
     await updateDoc(productRef, {
-      ...productData,
+      ...dataToUpdate,
       updatedAt: new Date()
     });
     
