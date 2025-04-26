@@ -8,25 +8,41 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { auth } from "@/integrations/firebase/client";
 import { updateProfile } from "firebase/auth";
-import { User, LogOut, Mail, Phone, MapPin, Package } from "lucide-react";
+import { User, LogOut, Mail, Phone, MapPin, Plus, Edit2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCart } from "@/contexts/CartContext";
 import { StatusBadge } from "@/components/admin/StatusBadge";
+import { getUserProfile, updateUserProfile, UserProfile, UserAddress } from "@/lib/firebase/userOperations";
+import { AddressForm } from "@/components/profile/AddressForm";
 
 export default function Profile() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [displayName, setDisplayName] = useState("");
+  const [phone, setPhone] = useState("");
   const { orders, returnRequests } = useCart();
-  
+
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+    const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        setDisplayName(currentUser.displayName || '');
+        setDisplayName(currentUser.displayName || "");
+        
+        // Fetch user profile from Firestore
+        try {
+          const profile = await getUserProfile(currentUser.uid);
+          if (profile) {
+            setUserProfile(profile);
+            setPhone(profile.phone || "");
+          }
+        } catch (error) {
+          console.error("Error fetching user profile:", error);
+        }
       } else {
         navigate("/login");
       }
@@ -61,8 +77,16 @@ export default function Profile() {
   const handleUpdateProfile = async () => {
     try {
       if (auth.currentUser) {
+        // Update Firebase Auth profile
         await updateProfile(auth.currentUser, {
           displayName: displayName
+        });
+        
+        // Update Firestore profile
+        await updateUserProfile(auth.currentUser.uid, {
+          displayName,
+          phone,
+          email: auth.currentUser.email || "",
         });
         
         localStorage.setItem("userName", displayName);
@@ -78,6 +102,38 @@ export default function Profile() {
       toast({
         title: "Update failed",
         description: "Failed to update profile",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveAddress = async (address: UserAddress) => {
+    try {
+      if (auth.currentUser && userProfile) {
+        const currentAddresses = userProfile.addresses || [];
+        const updatedAddresses = [...currentAddresses, address];
+        
+        await updateUserProfile(auth.currentUser.uid, {
+          ...userProfile,
+          addresses: updatedAddresses,
+        });
+        
+        setUserProfile({
+          ...userProfile,
+          addresses: updatedAddresses,
+        });
+        
+        setIsAddingAddress(false);
+        toast({
+          title: "Address saved",
+          description: "Your address has been successfully saved",
+        });
+      }
+    } catch (error) {
+      console.error("Address save error:", error);
+      toast({
+        title: "Save failed",
+        description: "Failed to save address",
         variant: "destructive",
       });
     }
@@ -121,23 +177,6 @@ export default function Profile() {
               </div>
               
               <div className="flex-grow space-y-6">
-                {/* Contact Information */}
-                <div className="grid gap-4">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{user.displayName || 'User'}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span>{user.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span>{localStorage.getItem("userPhone") || 'No phone number added'}</span>
-                  </div>
-                </div>
-
-                {/* Edit Profile Section */}
                 {isEditing ? (
                   <div className="space-y-4">
                     <div className="space-y-2">
@@ -148,6 +187,15 @@ export default function Profile() {
                         onChange={(e) => setDisplayName(e.target.value)}
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input
+                        id="phone"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        placeholder="+91 1234567890"
+                      />
+                    </div>
                     <div className="flex space-x-2">
                       <Button onClick={handleUpdateProfile}>Save Changes</Button>
                       <Button variant="outline" onClick={() => setIsEditing(false)}>
@@ -156,12 +204,77 @@ export default function Profile() {
                     </div>
                   </div>
                 ) : (
-                  <Button variant="outline" onClick={() => setIsEditing(true)}>
-                    Edit Profile
-                  </Button>
+                  <div className="space-y-4">
+                    <div className="grid gap-4">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">{displayName || 'User'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span>{user.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span>{phone || 'No phone number added'}</span>
+                      </div>
+                    </div>
+                    <Button variant="outline" onClick={() => setIsEditing(true)}>
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      Edit Profile
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Addresses Card */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Addresses</CardTitle>
+                <CardDescription>Manage your shipping addresses</CardDescription>
+              </div>
+              <Button onClick={() => setIsAddingAddress(true)} disabled={isAddingAddress}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Address
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isAddingAddress ? (
+              <AddressForm
+                onSave={handleSaveAddress}
+                onCancel={() => setIsAddingAddress(false)}
+              />
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {userProfile?.addresses?.map((address, index) => (
+                  <Card key={index}>
+                    <CardContent className="p-4">
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 mt-1 text-muted-foreground" />
+                          <div>
+                            <p>{address.street}</p>
+                            <p>{address.city}, {address.state} {address.zipCode}</p>
+                            <p>{address.country}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+                {(!userProfile?.addresses || userProfile.addresses.length === 0) && (
+                  <p className="text-muted-foreground col-span-2 text-center py-8">
+                    No addresses added yet
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
