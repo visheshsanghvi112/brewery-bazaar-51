@@ -41,7 +41,7 @@ export const updateProductInFirestore = async (productId: string, productData: P
       updatedAt: new Date()
     });
     
-    console.log("Product updated: ", productId);
+    console.log("Product updated successfully: ", productId);
   } catch (error) {
     console.error("Error updating product: ", error);
     throw error;
@@ -51,6 +51,7 @@ export const updateProductInFirestore = async (productId: string, productData: P
 // Delete product from Firestore
 export const deleteProductFromFirestore = async (productId: string): Promise<void> => {
   try {
+    console.log("Deleting product from Firestore:", productId);
     const productRef = doc(db, "products", productId);
     
     // Verify the document exists first
@@ -60,7 +61,7 @@ export const deleteProductFromFirestore = async (productId: string): Promise<voi
     }
     
     await deleteDoc(productRef);
-    console.log("Product deleted: ", productId);
+    console.log("Product deleted successfully: ", productId);
   } catch (error) {
     console.error("Error deleting product: ", error);
     throw error;

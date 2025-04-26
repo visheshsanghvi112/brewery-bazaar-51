@@ -5,6 +5,16 @@ import { Product } from '@/types';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2 } from 'lucide-react';
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ProductCardProps {
   product: Product;
@@ -19,6 +29,7 @@ export function ProductCard({
   handleEditProduct,
   handleDeleteProduct
 }: ProductCardProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const category = categories.find(c => c.slug === product.category);
   const categoryName = category ? category.name : product.category;
   
@@ -93,13 +104,36 @@ export function ProductCard({
             variant="outline" 
             size="sm" 
             className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-            onClick={() => handleDeleteProduct(product.id)}
+            onClick={() => setShowDeleteConfirm(true)}
           >
             <Trash2 className="h-4 w-4 mr-1" />
             Delete
           </Button>
         </CardFooter>
       </Card>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this product?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The product "{product.name}" will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                handleDeleteProduct(product.id);
+                setShowDeleteConfirm(false);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 }

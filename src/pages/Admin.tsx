@@ -11,6 +11,7 @@ import AdminProducts from "./admin/Products";
 import AdminOrders from "./admin/Orders";
 import AdminReturns from "./admin/Returns";
 import AdminCustomers from "./admin/Customers";
+import { AdminProvider } from "@/contexts/AdminContext";
 
 export default function Admin() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -57,15 +58,17 @@ export default function Admin() {
   }
 
   return (
-    <AdminLayout onLogout={handleLogout}>
-      <Routes>
-        <Route index element={<AdminDashboard />} />
-        <Route path="products" element={<AdminProducts />} />
-        <Route path="orders" element={<AdminOrders />} />
-        <Route path="returns" element={<AdminReturns />} />
-        <Route path="customers" element={<AdminCustomers />} />
-        <Route path="*" element={<Navigate to="/admin" replace />} />
-      </Routes>
-    </AdminLayout>
+    <AdminProvider>
+      <AdminLayout onLogout={handleLogout}>
+        <Routes>
+          <Route index element={<AdminDashboard />} />
+          <Route path="products" element={<AdminProducts />} />
+          <Route path="orders" element={<AdminOrders />} />
+          <Route path="returns" element={<AdminReturns />} />
+          <Route path="customers" element={<AdminCustomers />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Routes>
+      </AdminLayout>
+    </AdminProvider>
   );
 }
