@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { auth } from "@/integrations/firebase/client";
 import { updateProfile } from "firebase/auth";
-import { User, LogOut, Mail, Phone, MapPin, Plus, Edit2 } from "lucide-react";
+import { User, LogOut, Mail, Phone, MapPin, Plus, Edit2, Package } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCart } from "@/contexts/CartContext";
