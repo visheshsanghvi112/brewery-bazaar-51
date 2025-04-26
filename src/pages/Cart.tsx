@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -18,6 +17,7 @@ import {
 } from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
 import CheckoutLayout from "@/components/checkout/CheckoutLayout";
+import AddressAutocomplete from "@/components/ui/AddressAutocomplete";
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -33,12 +33,10 @@ export default function CartPage() {
     placeOrder
   } = useCart();
   
-  // Checkout state
   const [step, setStep] = useState<"cart" | "shipping" | "payment">("cart");
   const [useShippingAsBilling, setUseShippingAsBilling] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
   
-  // Shipping information
   const [shippingInfo, setShippingInfo] = useState<Address>(
     shippingAddress || {
       street: "",
@@ -49,7 +47,6 @@ export default function CartPage() {
     }
   );
   
-  // Billing information
   const [billingInfo, setBillingInfo] = useState<Address>(
     billingAddress || {
       street: "",
@@ -60,7 +57,6 @@ export default function CartPage() {
     }
   );
   
-  // Customer information
   const [customerInfo, setCustomerInfo] = useState<Customer>({
     id: "",
     name: localStorage.getItem("userName") || "",
@@ -68,12 +64,13 @@ export default function CartPage() {
     phone: ""
   });
   
-  // Format price for display
+  const [shippingSearchValue, setShippingSearchValue] = useState("");
+  const [billingSearchValue, setBillingSearchValue] = useState("");
+  
   const formatPrice = (price: number) => {
     return `₹${(price / 100).toFixed(2)}`;
   };
   
-  // Handle shipping form fields
   const handleShippingChange = (field: keyof Address, value: string) => {
     const updated = { ...shippingInfo, [field]: value };
     setShippingInfo(updated);
@@ -85,19 +82,16 @@ export default function CartPage() {
     }
   };
   
-  // Handle billing form fields
   const handleBillingChange = (field: keyof Address, value: string) => {
     const updated = { ...billingInfo, [field]: value };
     setBillingInfo(updated);
     setBillingAddress(updated);
   };
   
-  // Handle customer form fields
   const handleCustomerChange = (field: keyof Customer, value: string) => {
     setCustomerInfo({ ...customerInfo, [field]: value });
   };
   
-  // Handle shipping form submission
   const handleShippingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -119,7 +113,6 @@ export default function CartPage() {
     setStep("payment");
   };
   
-  // Handle payment form submission
   const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -132,14 +125,11 @@ export default function CartPage() {
       return;
     }
     
-    // Save customer info to localStorage for future use
     localStorage.setItem("userName", customerInfo.name);
     localStorage.setItem("userEmail", customerInfo.email);
     
-    // Place the order
     const orderId = placeOrder(customerInfo, paymentMethod);
     
-    // Redirect to thank you page (this would normally go to payment gateway)
     navigate("/");
     
     toast({
@@ -148,12 +138,10 @@ export default function CartPage() {
     });
   };
   
-  // Calculate shipping and total
   const subtotal = cart.total;
-  const shipping = subtotal >= 99900 ? 0 : 10000; // Free shipping for orders above ₹999
+  const shipping = subtotal >= 99900 ? 0 : 10000;
   const total = subtotal + shipping;
   
-  // Empty cart view
   if (cart.items.length === 0) {
     return (
       <CheckoutLayout 
@@ -176,7 +164,6 @@ export default function CartPage() {
     );
   }
   
-  // Shopping Cart Step
   if (step === "cart") {
     return (
       <CheckoutLayout 
@@ -196,9 +183,7 @@ export default function CartPage() {
         </div>
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Cart Items */}
           <div className="lg:col-span-2 space-y-4">
-            {/* Header (desktop only) */}
             <div className="hidden md:grid grid-cols-5 gap-4 py-2 border-b text-sm font-medium text-muted-foreground">
               <div className="col-span-2">Product</div>
               <div className="text-center">Price</div>
@@ -206,7 +191,6 @@ export default function CartPage() {
               <div className="text-right">Total</div>
             </div>
             
-            {/* Cart items */}
             <AnimatePresence>
               {cart.items.map((item, index) => (
                 <motion.div
@@ -217,7 +201,6 @@ export default function CartPage() {
                   transition={{ duration: 0.3, delay: index * 0.1 }}
                   className="border rounded-md p-4 md:p-0 md:border-none md:grid md:grid-cols-5 md:gap-4 md:items-center"
                 >
-                  {/* Product info */}
                   <div className="md:col-span-2 flex gap-4 items-center mb-4 md:mb-0 md:py-4">
                     <motion.div 
                       whileHover={{ scale: 1.05 }}
@@ -251,7 +234,6 @@ export default function CartPage() {
                     </div>
                   </div>
                   
-                  {/* Price */}
                   <div className="md:text-center flex justify-between md:block">
                     <div className="md:hidden text-sm text-muted-foreground">
                       Price
@@ -259,7 +241,6 @@ export default function CartPage() {
                     <div>{formatPrice(item.product.price)}</div>
                   </div>
                   
-                  {/* Quantity */}
                   <div className="md:text-center mt-2 md:mt-0 flex justify-between md:block items-center">
                     <div className="md:hidden text-sm text-muted-foreground">
                       Quantity
@@ -287,7 +268,6 @@ export default function CartPage() {
                     </div>
                   </div>
                   
-                  {/* Total */}
                   <div className="md:text-right mt-2 md:mt-0 flex justify-between md:block items-center">
                     <div className="md:hidden text-sm text-muted-foreground">
                       Total
@@ -297,7 +277,6 @@ export default function CartPage() {
                     </div>
                   </div>
                   
-                  {/* Remove (desktop) */}
                   <div className="hidden md:flex md:justify-end">
                     <Button
                       variant="ghost"
@@ -314,7 +293,6 @@ export default function CartPage() {
             </AnimatePresence>
           </div>
           
-          {/* Order Summary */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -359,7 +337,6 @@ export default function CartPage() {
     );
   }
   
-  // Shipping Step
   if (step === "shipping") {
     return (
       <CheckoutLayout 
@@ -370,6 +347,18 @@ export default function CartPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div>
             <form onSubmit={handleShippingSubmit} className="space-y-4">
+              <AddressAutocomplete
+                label="Search Address"
+                value={shippingSearchValue}
+                onChange={(address) => {
+                  setShippingInfo((prev) => ({ ...prev, ...address }));
+                  if (useShippingAsBilling) {
+                    setBillingInfo((prev) => ({ ...prev, ...address }));
+                  }
+                }}
+                onInputChange={setShippingSearchValue}
+              />
+              
               <div className="space-y-2">
                 <Label htmlFor="shipping-street">Street Address</Label>
                 <Input
@@ -440,6 +429,15 @@ export default function CartPage() {
               {!useShippingAsBilling && (
                 <div className="mt-6 pt-6 border-t">
                   <h2 className="text-lg font-bold mb-4">Billing Information</h2>
+                  
+                  <AddressAutocomplete
+                    label="Search Address"
+                    value={billingSearchValue}
+                    onChange={(address) => {
+                      setBillingInfo((prev) => ({ ...prev, ...address }));
+                    }}
+                    onInputChange={setBillingSearchValue}
+                  />
                   
                   <div className="space-y-4">
                     <div className="space-y-2">
@@ -577,7 +575,6 @@ export default function CartPage() {
     );
   }
   
-  // Payment Step
   if (step === "payment") {
     return (
       <CheckoutLayout 
