@@ -2,6 +2,7 @@
 import { Order, ReturnRequest, ReturnStatus, EmailStatus, OrderStatus } from "@/types";
 import { generateBatchShippingLabels } from "./shippingLabels";
 import { sendOrderStatusUpdateEmail } from "./emailService";
+import { generateReturnLabel } from "./returnLabels";
 
 /**
  * Process bulk order status updates
@@ -157,42 +158,55 @@ export const processBatchReturns = async (
 /**
  * Update return statuses in bulk
  */
-const updateReturnStatuses = async (
+export const bulkUpdateReturnStatus = async (
   returns: ReturnRequest[],
-  status: ReturnStatus
-): Promise<ReturnRequest[]> => {
-  return returns.map(returnReq => ({
+  status: ReturnStatus,
+  processingNotes?: string
+): Promise<{ success: boolean; updatedReturns: ReturnRequest[]; failedEmails: string[] }> => {
+  const updatedReturns = returns.map(returnReq => ({
     ...returnReq,
     status,
+    processingNotes: processingNotes ? processingNotes : returnReq.processingNotes,
     lastNotificationStatus: "Not Sent" as EmailStatus
   }));
+  
+  const failedEmails: string[] = [];
+  
+  // In a real app, this would have more robust error handling
+  return {
+    success: true,
+    updatedReturns,
+    failedEmails
+  };
 };
 
 /**
- * Generate return labels in bulk
+ * Generate return labels in bulk - this is the one needed by ReturnsTabContent
  */
-const generateReturnLabels = async (returns: ReturnRequest[]): Promise<ReturnRequest[]> => {
+export const bulkGenerateReturnLabels = async (
+  returns: ReturnRequest[]
+): Promise<ReturnRequest[]> => {
   // In a real application, this would generate return shipping labels
   return returns.map(returnReq => ({
     ...returnReq,
     labelGenerated: true,
-    labelUrl: `https://example.com/return-label-${returnReq.id}.pdf`
+    labelUrl: generateReturnLabel(returnReq)
   }));
 };
 
 /**
- * Process return refunds in bulk
+ * Process return refunds in bulk - this is the one needed by ReturnsTabContent
  */
-const processReturnRefunds = async (returns: ReturnRequest[]): Promise<ReturnRequest[]> => {
+export const bulkProcessRefunds = (
+  returns: ReturnRequest[]
+): ReturnRequest[] => {
   // Only process returns that are in 'Completed' status
-  const completedReturns = returns.filter(returnReq => returnReq.status === "Completed");
-  
   return returns.map(returnReq => {
-    if (completedReturns.some(r => r.id === returnReq.id)) {
+    if (returnReq.status === "Completed" || returnReq.status === "Approved") {
       const refundAmount = returnReq.items.reduce((sum, item) => sum + item.price, 0);
       return {
         ...returnReq,
-        refundStatus: "Completed",
+        refundStatus: "Completed" as ReturnStatus,
         refundAmount,
         refundDate: new Date().toISOString()
       };

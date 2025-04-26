@@ -24,7 +24,7 @@ interface OrderFulfillmentTrackerProps {
 }
 
 export const OrderFulfillmentTracker = ({ order, onUpdate }: OrderFulfillmentTrackerProps) => {
-  const [status, setStatus] = useState(order.fulfillmentStatus || "Pending");
+  const [status, setStatus] = useState<string>(order.fulfillmentStatus || "Pending");
   const [trackingNumber, setTrackingNumber] = useState(order.trackingNumber || "");
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -107,7 +107,10 @@ export const OrderFulfillmentTracker = ({ order, onUpdate }: OrderFulfillmentTra
           <label htmlFor="status" className="text-sm font-medium">
             Update Status
           </label>
-          <Select value={status} onValueChange={setStatus}>
+          <Select 
+            value={status} 
+            onValueChange={(value) => setStatus(value)}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Select status" />
             </SelectTrigger>
