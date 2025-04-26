@@ -77,6 +77,12 @@ export interface Customer {
   name: string;
   email: string;
   phone: string;
+  lifetimeValue?: number;
+  segment?: 'new' | 'regular' | 'loyal' | 'vip';
+  purchaseCount?: number;
+  lastPurchaseDate?: string;
+  loyaltyPoints?: number;
+  joinedDate?: string;
 }
 
 // Order Types
@@ -84,6 +90,12 @@ export type OrderStatus = 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled' |
 
 // Return Status Types
 export type ReturnStatus = 'Requested' | 'Approved' | 'In Progress' | 'Completed' | 'Rejected';
+
+// Refund Status Types
+export type RefundStatus = 'Pending' | 'Processing' | 'Completed' | 'Failed' | 'Not Applicable';
+
+// Email notification status
+export type EmailStatus = 'Not Sent' | 'Sent' | 'Failed';
 
 export interface OrderItem {
   product: Product;
@@ -106,9 +118,17 @@ export interface Order {
   paymentMethod: string;
   notes?: string;
   returnRequest?: string;
+  fulfillmentStatus?: 'Pending' | 'Preparing' | 'Packed' | 'Shipped' | 'Delivered';
+  shippingLabelGenerated?: boolean;
+  trackingNumber?: string;
+  inventoryUpdated?: boolean;
+  lastEmailNotification?: {
+    status: string;
+    date: string;
+  };
 }
 
-// Return Request Type
+// Enhanced Return Request Type
 export interface ReturnRequest {
   id: string;
   orderId: string;
@@ -120,4 +140,32 @@ export interface ReturnRequest {
   status: ReturnStatus;
   createdAt: string;
   scheduledDate: string;
+  refundStatus?: RefundStatus;
+  refundAmount?: number;
+  refundDate?: string;
+  labelGenerated?: boolean;
+  labelUrl?: string;
+  lastNotificationStatus?: EmailStatus;
+  lastNotificationDate?: string;
+  processingNotes?: string;
+}
+
+// Return Analytics
+export interface ReturnAnalytics {
+  totalReturns: number;
+  returnRate: number;
+  totalRefunded: number;
+  averageProcessingTime: number;
+  returnsByStatus: {
+    status: ReturnStatus;
+    count: number;
+  }[];
+  returnsByReason: {
+    reason: string;
+    count: number;
+  }[];
+  monthlyReturns: {
+    month: string;
+    count: number;
+  }[];
 }

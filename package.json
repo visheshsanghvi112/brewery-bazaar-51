@@ -50,6 +50,7 @@
     "firebase": "^10.9.0",
     "framer-motion": "^10.18.0",
     "input-otp": "^1.2.4",
+    "jspdf": "^3.0.1",
     "lucide-react": "^0.462.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",
