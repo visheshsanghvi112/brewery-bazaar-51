@@ -1,3 +1,4 @@
+
 import { createContext, useContext, ReactNode, useState, useEffect } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Product, Order, OrderStatus } from "@/types";
@@ -179,6 +180,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   };
 
   const handleSaveProduct = async () => {
+    console.log("Saving product with data:", formProduct);
+
     if (!formProduct.name || !formProduct.price || !formProduct.category) {
       toast({
         title: "Missing information",
@@ -190,6 +193,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
     try {
       if (editingProduct) {
+        console.log("Updating existing product:", editingProduct.id);
         await updateProductInFirestore(editingProduct.id, formProduct as Product);
         
         setProducts(products.map(p => 
@@ -203,6 +207,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           description: `${formProduct.name} has been updated successfully.`,
         });
       } else {
+        console.log("Adding new product");
         const newProductId = await addProductToFirestore(formProduct as Omit<Product, 'id'>);
         
         const newProduct = {

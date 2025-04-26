@@ -1,6 +1,8 @@
 
 import { useAdmin } from "@/contexts/AdminContext";
 import { ProductsTabContent } from "@/components/admin/ProductsTabContent";
+import { ProductFormDialog } from "@/components/admin/ProductFormDialog";
+import { colorOptions } from "@/contexts/AdminContext";
 
 export default function AdminProducts() {
   const {
@@ -14,6 +16,20 @@ export default function AdminProducts() {
     handleAddProduct,
     handleEditProduct,
     handleDeleteProduct,
+    showProductForm,
+    setShowProductForm,
+    formProduct,
+    setFormProduct,
+    editingProduct,
+    productImages,
+    setProductImages,
+    productImageUrls,
+    handleSaveProduct,
+    handleAddVariant,
+    handleRemoveVariant,
+    handleVariantChange,
+    handleFileChange,
+    handleRemoveImage
   } = useAdmin();
 
   return (
@@ -30,6 +46,25 @@ export default function AdminProducts() {
         handleAddProduct={handleAddProduct}
         handleEditProduct={handleEditProduct}
         handleDeleteProduct={handleDeleteProduct}
+      />
+      
+      <ProductFormDialog
+        showProductForm={showProductForm}
+        setShowProductForm={setShowProductForm}
+        formProduct={formProduct}
+        setFormProduct={setFormProduct}
+        editingProduct={editingProduct}
+        productImages={productImages}
+        setProductImages={setProductImages}
+        productImageUrls={productImageUrls}
+        categories={categories}
+        handleSaveProduct={handleSaveProduct}
+        handleAddVariant={handleAddVariant}
+        handleRemoveVariant={handleRemoveVariant}
+        handleVariantChange={handleVariantChange}
+        handleFileChange={handleFileChange}
+        handleRemoveImage={handleRemoveImage}
+        colorOptions={colorOptions}
       />
     </div>
   );
