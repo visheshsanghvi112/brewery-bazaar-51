@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useLocalStorage } from './use-local-storage';
+import { auth } from "@/integrations/firebase/client";
 
 export function useAdmin() {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
@@ -9,11 +10,21 @@ export function useAdmin() {
   useEffect(() => {
     // Check if user is logged in as admin from localStorage or session storage
     const checkAdmin = () => {
+      // First verify that a user is actually logged in
+      if (!auth.currentUser) {
+        setIsAdmin(false);
+        return;
+      }
+      
       // Check both adminUser object and userRole for compatibility
       const adminUser = localStorage.getItem('adminUser');
       const userRole = localStorage.getItem('userRole');
       
-      console.log("Checking admin status:", { adminUser, userRole });
+      console.log("Checking admin status:", { 
+        currentUser: auth.currentUser?.email,
+        adminUser, 
+        userRole 
+      });
       
       if (adminUser) {
         try {
@@ -35,10 +46,20 @@ export function useAdmin() {
     
     checkAdmin();
     
+    // Listen for auth state changes
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user) {
+        setIsAdmin(false);
+      } else {
+        checkAdmin();
+      }
+    });
+    
     // Listen for changes to admin status
     window.addEventListener('storage', checkAdmin);
     
     return () => {
+      unsubscribe();
       window.removeEventListener('storage', checkAdmin);
     };
   }, []);
