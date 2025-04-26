@@ -5,6 +5,15 @@ import { auth } from "@/integrations/firebase/client";
 export function useAdmin() {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   
+  const setAdminStatus = (status: boolean) => {
+    setIsAdmin(status);
+    if (status) {
+      localStorage.setItem('userRole', 'admin');
+    } else {
+      localStorage.removeItem('userRole');
+    }
+  };
+  
   useEffect(() => {
     const checkAdmin = () => {
       const currentUser = auth.currentUser;
@@ -40,5 +49,5 @@ export function useAdmin() {
     return () => unsubscribe();
   }, []);
   
-  return { isAdmin };
+  return { isAdmin, setAdminStatus };
 }
