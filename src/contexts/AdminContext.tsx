@@ -1,10 +1,14 @@
 import { createContext, useContext, ReactNode, useState, useEffect } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Product, Order, OrderStatus } from "@/types";
-import { products as initialProducts, categories } from "@/lib/data";
+import { categories } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
-import { addProductToFirestore, updateProductInFirestore, deleteProductFromFirestore } from "@/lib/firebase/productOperations";
-import { getProductsFromFirestore } from "@/lib/firebase/products";
+import { 
+  addProductToFirestore, 
+  updateProductInFirestore, 
+  deleteProductFromFirestore,
+  getProductsFromFirestore 
+} from "@/lib/firebase/productOperations";
 
 interface AdminContextType {
   products: Product[];
@@ -72,7 +76,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [productImages, setProductImages] = useState<(File | null)[]>([null]);
   const [productImageUrls, setProductImageUrls] = useState<string[]>([]);
   
-  const [products, setProducts] = useLocalStorage<Product[]>("products", initialProducts);
+  const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useLocalStorage<Order[]>("orders", []);
   const [customers, setCustomers] = useLocalStorage<any[]>("customers", []);
   
@@ -104,12 +108,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   });
   
   useEffect(() => {
-    const fetchProducts = async () => {
+    const loadProducts = async () => {
       try {
-        const productsData = await getProductsFromFirestore();
-        setProducts(productsData);
+        const fetchedProducts = await getProductsFromFirestore();
+        setProducts(fetchedProducts);
+        console.log("Products loaded from Firestore:", fetchedProducts.length);
       } catch (error) {
-        console.error("Error fetching products:", error);
+        console.error("Error loading products from Firestore:", error);
         toast({
           title: "Error",
           description: "Failed to load products from database",
@@ -118,8 +123,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       }
     };
 
-    fetchProducts();
-  }, []);
+    loadProducts();
+  }, [toast]);
 
   const handleAddProduct = () => {
     setEditingProduct(null);
@@ -149,7 +154,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
-    setFormProduct(product);
+    setFormProduct({...product});
     setProductImages([null]);
     setProductImageUrls(product.images || []);
     setShowProductForm(true);
@@ -186,8 +191,11 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     try {
       if (editingProduct) {
         await updateProductInFirestore(editingProduct.id, formProduct as Product);
+        
         setProducts(products.map(p => 
-          p.id === editingProduct.id ? { ...formProduct as Product, id: editingProduct.id } : p
+          p.id === editingProduct.id 
+            ? { ...formProduct as Product, id: editingProduct.id } 
+            : p
         ));
         
         toast({
@@ -196,6 +204,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         });
       } else {
         const newProductId = await addProductToFirestore(formProduct as Omit<Product, 'id'>);
+        
         const newProduct = {
           ...formProduct as Product,
           id: newProductId,
