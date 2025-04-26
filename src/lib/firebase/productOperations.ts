@@ -36,10 +36,19 @@ export const updateProductInFirestore = async (productId: string, productData: P
     // Remove id if present to avoid overwriting it
     const { id, ...dataToUpdate } = productData as any;
     
-    await updateDoc(productRef, {
-      ...dataToUpdate,
-      updatedAt: new Date()
-    });
+    // Create a clean update object without undefined values
+    const cleanUpdateData = Object.entries(dataToUpdate).reduce((acc, [key, value]) => {
+      // Skip undefined values as Firestore doesn't accept them
+      if (value !== undefined) {
+        acc[key] = value;
+      }
+      return acc;
+    }, {} as Record<string, any>);
+    
+    // Add the updated timestamp
+    cleanUpdateData.updatedAt = new Date();
+    
+    await updateDoc(productRef, cleanUpdateData);
     
     console.log("Product updated successfully: ", productId);
   } catch (error) {

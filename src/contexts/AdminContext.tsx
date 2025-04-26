@@ -197,19 +197,25 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       ? productImageUrls 
       : ["https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg"];
 
-    const productToSave = {
+    // Create a clean product object without undefined values
+    const productToSave: Partial<Product> = {
       ...formProduct,
       images
     };
 
+    // If originalPrice is empty string or 0, set to null to avoid Firestore errors
+    if (!productToSave.originalPrice) {
+      productToSave.originalPrice = null;
+    }
+
     try {
       if (editingProduct) {
         console.log("Updating existing product:", editingProduct.id);
-        await updateProductInFirestore(editingProduct.id, productToSave as Product);
+        await updateProductInFirestore(editingProduct.id, productToSave);
         
         setProducts(products.map(p => 
           p.id === editingProduct.id 
-            ? { ...productToSave as Product, id: editingProduct.id } 
+            ? { ...p, ...productToSave, id: editingProduct.id } 
             : p
         ));
         
@@ -222,9 +228,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         const newProductId = await addProductToFirestore(productToSave as Omit<Product, 'id'>);
         
         const newProduct = {
-          ...productToSave as Product,
+          ...productToSave,
           id: newProductId,
-        };
+        } as Product;
         
         setProducts([...products, newProduct]);
         
