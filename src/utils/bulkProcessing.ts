@@ -1,115 +1,214 @@
 
-import { ReturnRequest, ReturnStatus, RefundStatus, EmailStatus } from "@/types";
-import { sendReturnStatusUpdateEmail } from "./emailService";
+import { Order, ReturnRequest, ReturnStatus, EmailStatus, OrderStatus } from "@/types";
+import { generateBatchShippingLabels } from "./shippingLabels";
+import { sendOrderStatusUpdateEmail } from "./emailService";
 
 /**
- * Process multiple return requests with the same status update
+ * Process bulk order status updates
  */
-export const bulkUpdateReturnStatus = async (
-  returnRequests: ReturnRequest[],
-  newStatus: ReturnStatus,
-  processingNotes?: string,
-  sendEmails = true
-): Promise<{ 
-  success: boolean;
-  updatedReturns: ReturnRequest[];
-  failedEmails: string[];
-}> => {
-  const updatedReturns = returnRequests.map(request => {
-    // Update return status
-    const updatedReturn = {
-      ...request,
-      status: newStatus,
-      processingNotes: processingNotes || request.processingNotes
-    };
-    
-    // If status is Completed, update refund status if applicable
-    if (newStatus === 'Completed' && !updatedReturn.refundDate) {
-      updatedReturn.refundStatus = 'Completed';
-      updatedReturn.refundDate = new Date().toISOString();
-    }
-    
-    // If status is Approved and label not generated, mark for generation
-    if (newStatus === 'Approved' && !updatedReturn.labelGenerated) {
-      updatedReturn.labelGenerated = false;
-    }
-    
-    return updatedReturn;
-  });
+export const processBatchOrders = async (
+  allOrders: Order[],
+  orderIds: string[],
+  action: string,
+  value?: string
+): Promise<Order[]> => {
+  console.log(`Processing ${orderIds.length} orders with action: ${action}`);
   
-  // Send emails if required
-  const failedEmails: string[] = [];
+  // Find the orders to process
+  const ordersToProcess = allOrders.filter(order => orderIds.includes(order.id));
   
-  if (sendEmails) {
-    for (const returnRequest of updatedReturns) {
-      try {
-        const emailResult = await sendReturnStatusUpdateEmail(returnRequest);
-        if (!emailResult.success) {
-          failedEmails.push(returnRequest.id);
-        } else {
-          // Update notification status
-          returnRequest.lastNotificationStatus = 'Sent' as EmailStatus;
-          returnRequest.lastNotificationDate = new Date().toISOString();
-        }
-      } catch (error) {
-        console.error(`Failed to send email for return ${returnRequest.id}:`, error);
-        failedEmails.push(returnRequest.id);
-        returnRequest.lastNotificationStatus = 'Failed' as EmailStatus;
+  switch (action) {
+    case "update_status":
+      return updateOrderStatuses(ordersToProcess, value as OrderStatus);
+    
+    case "generate_labels":
+      return generateShippingLabels(ordersToProcess);
+    
+    case "update_inventory":
+      return updateInventory(ordersToProcess);
+    
+    case "send_notifications":
+      return sendNotifications(ordersToProcess);
+    
+    default:
+      throw new Error(`Unknown action: ${action}`);
+  }
+};
+
+/**
+ * Update order statuses in bulk
+ */
+const updateOrderStatuses = async (orders: Order[], status: OrderStatus): Promise<Order[]> => {
+  console.log(`Updating ${orders.length} orders to status: ${status}`);
+  
+  return orders.map(order => ({
+    ...order,
+    status,
+    lastEmailNotification: undefined // Clear last notification to indicate status has changed
+  }));
+};
+
+/**
+ * Generate shipping labels in bulk
+ */
+const generateShippingLabels = async (orders: Order[]): Promise<Order[]> => {
+  console.log(`Generating shipping labels for ${orders.length} orders`);
+  
+  try {
+    // Generate batch shipping labels
+    const { trackingNumbers, combinedPdfUrl } = await generateBatchShippingLabels(orders);
+    
+    // Open the combined PDF in a new window
+    window.open(combinedPdfUrl, '_blank');
+    
+    // Update orders with tracking numbers and mark labels as generated
+    return orders.map(order => ({
+      ...order,
+      trackingNumber: trackingNumbers[order.id],
+      shippingLabelGenerated: true,
+      status: order.status === "Processing" ? "Shipped" as OrderStatus : order.status
+    }));
+  } catch (error) {
+    console.error("Error generating shipping labels:", error);
+    throw error;
+  }
+};
+
+/**
+ * Update inventory in bulk
+ */
+const updateInventory = async (orders: Order[]): Promise<Order[]> => {
+  console.log(`Updating inventory for ${orders.length} orders`);
+  
+  // In a real application, this would update inventory in the database
+  // For now, we'll just mark the inventory as updated
+  return orders.map(order => ({
+    ...order,
+    inventoryUpdated: true
+  }));
+};
+
+/**
+ * Send notifications in bulk
+ */
+const sendNotifications = async (orders: Order[]): Promise<Order[]> => {
+  console.log(`Sending notifications for ${orders.length} orders`);
+  
+  const updatedOrders: Order[] = [];
+  
+  // Send notifications for each order
+  for (const order of orders) {
+    try {
+      // Send email notification
+      const result = await sendOrderStatusUpdateEmail(order);
+      
+      // Update the order
+      if (result.success) {
+        updatedOrders.push({
+          ...order,
+          lastEmailNotification: {
+            status: order.status,
+            date: new Date().toISOString()
+          }
+        });
+      } else {
+        throw new Error(result.message);
       }
+    } catch (error) {
+      console.error(`Error sending notification for order ${order.id}:`, error);
+      // Still add the order to updatedOrders, but don't update the notification status
+      updatedOrders.push(order);
     }
   }
   
-  return {
-    success: true,
-    updatedReturns,
-    failedEmails
-  };
+  return updatedOrders;
+};
+
+/**
+ * Process bulk return requests
+ */
+export const processBatchReturns = async (
+  allReturns: ReturnRequest[],
+  returnIds: string[],
+  action: string,
+  value?: string
+): Promise<ReturnRequest[]> => {
+  // Find the returns to process
+  const returnsToProcess = allReturns.filter(returnReq => returnIds.includes(returnReq.id));
+  
+  switch (action) {
+    case "update_status":
+      return updateReturnStatuses(returnsToProcess, value as ReturnStatus);
+      
+    case "generate_labels":
+      return generateReturnLabels(returnsToProcess);
+      
+    case "process_refunds":
+      return processReturnRefunds(returnsToProcess);
+      
+    case "send_notifications":
+      return sendReturnNotifications(returnsToProcess);
+      
+    default:
+      throw new Error(`Unknown action: ${action}`);
+  }
+};
+
+/**
+ * Update return statuses in bulk
+ */
+const updateReturnStatuses = async (
+  returns: ReturnRequest[],
+  status: ReturnStatus
+): Promise<ReturnRequest[]> => {
+  return returns.map(returnReq => ({
+    ...returnReq,
+    status,
+    lastNotificationStatus: "Not Sent" as EmailStatus
+  }));
 };
 
 /**
  * Generate return labels in bulk
  */
-export const bulkGenerateReturnLabels = (
-  returnRequests: ReturnRequest[]
-): ReturnRequest[] => {
-  return returnRequests.map(request => {
-    if (!request.labelGenerated) {
-      // In a real app, this would call an API to generate a real shipping label
-      return {
-        ...request,
-        labelGenerated: true,
-        labelUrl: `https://example.com/labels/${request.id}.pdf`
-      };
-    }
-    return request;
-  });
+const generateReturnLabels = async (returns: ReturnRequest[]): Promise<ReturnRequest[]> => {
+  // In a real application, this would generate return shipping labels
+  return returns.map(returnReq => ({
+    ...returnReq,
+    labelGenerated: true,
+    labelUrl: `https://example.com/return-label-${returnReq.id}.pdf`
+  }));
 };
 
 /**
- * Process refunds in bulk
+ * Process return refunds in bulk
  */
-export const bulkProcessRefunds = (
-  returnRequests: ReturnRequest[]
-): ReturnRequest[] => {
-  return returnRequests.map(request => {
-    // Only process if not already completed
-    if (request.refundStatus !== 'Completed') {
-      // Calculate refund amount if not set
-      let refundAmount = request.refundAmount;
-      if (!refundAmount) {
-        refundAmount = request.items.reduce(
-          (sum, item) => sum + (item.price * item.quantity), 
-          0
-        );
-      }
-      
+const processReturnRefunds = async (returns: ReturnRequest[]): Promise<ReturnRequest[]> => {
+  // Only process returns that are in 'Completed' status
+  const completedReturns = returns.filter(returnReq => returnReq.status === "Completed");
+  
+  return returns.map(returnReq => {
+    if (completedReturns.some(r => r.id === returnReq.id)) {
+      const refundAmount = returnReq.items.reduce((sum, item) => sum + item.price, 0);
       return {
-        ...request,
-        refundStatus: 'Completed',
+        ...returnReq,
+        refundStatus: "Completed",
         refundAmount,
         refundDate: new Date().toISOString()
       };
     }
-    return request;
+    return returnReq;
   });
+};
+
+/**
+ * Send return notifications in bulk
+ */
+const sendReturnNotifications = async (returns: ReturnRequest[]): Promise<ReturnRequest[]> => {
+  // In a real application, this would send emails to customers
+  return returns.map(returnReq => ({
+    ...returnReq,
+    lastNotificationStatus: "Sent" as EmailStatus,
+    lastNotificationDate: new Date().toISOString()
+  }));
 };
