@@ -3,10 +3,10 @@ import { useLocalStorage } from "@/hooks/use-local-storage";
 import { Product, Order, OrderStatus } from "@/types";
 import { products as initialProducts, categories } from "@/lib/data";
 import { useToast } from "@/hooks/use-toast";
+import { addProductToFirestore, updateProductInFirestore, deleteProductFromFirestore } from "@/lib/firebase/productOperations";
+import { getProductsFromFirestore } from "@/lib/firebase/products";
 
-// Define the context type
 interface AdminContextType {
-  // Products
   products: Product[];
   setProducts: (products: Product[]) => void;
   filteredProducts: Product[];
@@ -15,17 +15,13 @@ interface AdminContextType {
   filterCategory: string | null;
   setFilterCategory: (category: string | null) => void;
   
-  // Categories
   categories: any[];
   
-  // Orders
   orders: Order[];
   setOrders: (orders: Order[]) => void;
   
-  // Customers
   customers: any[];
   
-  // Product form state
   editingProduct: Product | null;
   setEditingProduct: (product: Product | null) => void;
   formProduct: Partial<Product>;
@@ -33,17 +29,14 @@ interface AdminContextType {
   showProductForm: boolean;
   setShowProductForm: (show: boolean) => void;
   
-  // Product image state
   productImages: (File | null)[];
   setProductImages: (images: (File | null)[]) => void;
   productImageUrls: string[];
   setProductImageUrls: (urls: string[]) => void;
   
-  // Orders state
   viewingOrder: Order | null;
   setViewingOrder: (order: Order | null) => void;
   
-  // Admin functions
   handleAddProduct: () => void;
   handleEditProduct: (product: Product) => void;
   handleDeleteProduct: (productId: string) => void;
@@ -56,10 +49,8 @@ interface AdminContextType {
   handleRemoveImage: (index: number) => void;
 }
 
-// Create the context with a default value
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
-// Color options for variants
 export const colorOptions = [
   { name: "Black", code: "#000000" },
   { name: "White", code: "#FFFFFF" },
@@ -71,7 +62,6 @@ export const colorOptions = [
   { name: "Yellow", code: "#FFFF00" }
 ];
 
-// Provider component
 export function AdminProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,16 +72,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [productImages, setProductImages] = useState<(File | null)[]>([null]);
   const [productImageUrls, setProductImageUrls] = useState<string[]>([]);
   
-  // Get products from localStorage or use initial data
   const [products, setProducts] = useLocalStorage<Product[]>("products", initialProducts);
-  
-  // Get orders from localStorage or use empty array
   const [orders, setOrders] = useLocalStorage<Order[]>("orders", []);
-  
-  // Get customers from localStorage
   const [customers, setCustomers] = useLocalStorage<any[]>("customers", []);
   
-  // Form state for product editing/creation
   const [formProduct, setFormProduct] = useState<Partial<Product>>({
     name: "",
     description: "",
@@ -112,7 +96,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     inStock: true
   });
   
-  // Filter products based on search and category
   const filteredProducts = products.filter(product => {
     const matchesSearch = searchTerm === "" || 
       product.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -120,7 +103,24 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     return matchesSearch && matchesCategory;
   });
   
-  // Handle add new product
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const productsData = await getProductsFromFirestore();
+        setProducts(productsData);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load products from database",
+          variant: "destructive",
+        });
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
   const handleAddProduct = () => {
     setEditingProduct(null);
     setFormProduct({
@@ -146,8 +146,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setProductImageUrls([]);
     setShowProductForm(true);
   };
-  
-  // Handle edit product
+
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
     setFormProduct(product);
@@ -155,18 +154,26 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setProductImageUrls(product.images || []);
     setShowProductForm(true);
   };
-  
-  // Handle delete product
-  const handleDeleteProduct = (productId: string) => {
-    setProducts(products.filter(p => p.id !== productId));
-    toast({
-      title: "Product deleted",
-      description: "The product has been successfully removed.",
-    });
+
+  const handleDeleteProduct = async (productId: string) => {
+    try {
+      await deleteProductFromFirestore(productId);
+      setProducts(products.filter(p => p.id !== productId));
+      toast({
+        title: "Product deleted",
+        description: "The product has been successfully removed.",
+      });
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete product. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
-  
-  // Handle save product (add or update)
-  const handleSaveProduct = () => {
+
+  const handleSaveProduct = async () => {
     if (!formProduct.name || !formProduct.price || !formProduct.category) {
       toast({
         title: "Missing information",
@@ -175,47 +182,44 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       });
       return;
     }
-    
-    // Ensure there's at least one image
-    if (!formProduct.images?.length) {
+
+    try {
+      if (editingProduct) {
+        await updateProductInFirestore(editingProduct.id, formProduct as Product);
+        setProducts(products.map(p => 
+          p.id === editingProduct.id ? { ...formProduct as Product, id: editingProduct.id } : p
+        ));
+        
+        toast({
+          title: "Product updated",
+          description: `${formProduct.name} has been updated successfully.`,
+        });
+      } else {
+        const newProductId = await addProductToFirestore(formProduct as Omit<Product, 'id'>);
+        const newProduct = {
+          ...formProduct as Product,
+          id: newProductId,
+        };
+        
+        setProducts([...products, newProduct]);
+        
+        toast({
+          title: "Product added",
+          description: `${formProduct.name} has been added successfully.`,
+        });
+      }
+      
+      setShowProductForm(false);
+    } catch (error) {
+      console.error("Error saving product:", error);
       toast({
-        title: "Missing image",
-        description: "Please add at least one product image.",
+        title: "Error",
+        description: "Failed to save product. Please try again.",
         variant: "destructive",
       });
-      return;
     }
-    
-    if (editingProduct) {
-      // Update existing product
-      setProducts(products.map(p => 
-        p.id === editingProduct.id ? { ...formProduct as Product, id: editingProduct.id } : p
-      ));
-      
-      toast({
-        title: "Product updated",
-        description: `${formProduct.name} has been updated successfully.`,
-      });
-    } else {
-      // Add new product
-      const newId = `product-${Date.now()}`;
-      const newProduct = {
-        ...formProduct as Product,
-        id: newId,
-      };
-      
-      setProducts([...products, newProduct]);
-      
-      toast({
-        title: "Product added",
-        description: `${formProduct.name} has been added successfully.`,
-      });
-    }
-    
-    setShowProductForm(false);
   };
-  
-  // Handle add variant
+
   const handleAddVariant = () => {
     const variants = formProduct.variants || [];
     const newVariant = {
@@ -231,8 +235,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       variants: [...variants, newVariant]
     });
   };
-  
-  // Handle remove variant
+
   const handleRemoveVariant = (variantId: string) => {
     const updatedVariants = formProduct.variants?.filter(v => v.id !== variantId) || [];
     setFormProduct({
@@ -240,8 +243,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       variants: updatedVariants
     });
   };
-  
-  // Handle variant change
+
   const handleVariantChange = (variantId: string, field: string, value: any) => {
     const updatedVariants = formProduct.variants?.map(v => {
       if (v.id === variantId) {
@@ -255,8 +257,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       variants: updatedVariants
     });
   };
-  
-  // Handle update order status
+
   const handleUpdateOrderStatus = (orderId: string, status: OrderStatus) => {
     const updatedOrders = orders.map(order => 
       order.id === orderId ? { ...order, status } : order
@@ -269,23 +270,19 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       description: `Order #${orderId} status changed to ${status}`,
     });
   };
-  
-  // Handle file change
+
   const handleFileChange = (index: number, file: File | null) => {
     const newProductImages = [...productImages];
     newProductImages[index] = file;
     
-    // If this was the last slot and a file was added, create a new empty slot
     if (index === productImages.length - 1 && file) {
       newProductImages.push(null);
     }
     
     setProductImages(newProductImages);
   };
-  
-  // Handle image upload changes
+
   useEffect(() => {
-    // Convert any uploaded files to data URLs
     const convertFilesToUrls = async () => {
       const urls: string[] = [];
       
@@ -296,7 +293,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         }
       }
       
-      // Maintain existing image URLs that came from formProduct
       const existingUrls = formProduct.images?.filter(url => 
         !url.startsWith('blob:') && !url.startsWith('data:')
       ) || [];
@@ -312,8 +308,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     
     convertFilesToUrls();
   }, [productImages]);
-  
-  // Read file as data URL
+
   const readFileAsDataURL = (file: File): Promise<string> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -321,26 +316,21 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       reader.readAsDataURL(file);
     });
   };
-  
-  // Handle remove image
+
   const handleRemoveImage = (index: number) => {
-    // Remove from URLs array
     const newUrls = [...productImageUrls];
     newUrls.splice(index, 1);
     setProductImageUrls(newUrls);
     
-    // Update form product
     setFormProduct(prev => ({
       ...prev,
       images: newUrls
     }));
     
-    // If this was a file upload slot, remove it from productImages as well
     if (index < productImages.length) {
       const newProductImages = [...productImages];
       newProductImages.splice(index, 1);
       
-      // Make sure we always have at least one upload slot
       if (newProductImages.length === 0) {
         newProductImages.push(null);
       }
@@ -390,7 +380,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// Custom hook for using the context
 export function useAdmin() {
   const context = useContext(AdminContext);
   if (context === undefined) {
