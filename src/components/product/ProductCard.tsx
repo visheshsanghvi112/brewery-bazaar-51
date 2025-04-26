@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +12,7 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, isMobile }: ProductCardProps) {
   return (
-    <Link to={`/product/${product.id}`}>
+    <Link to={`/products/${product.id}`}>
       <Card className="group overflow-hidden border-none rounded-md shadow-md hover:shadow-xl transition-all duration-300">
         <div className="aspect-square bg-gradient-to-br from-muted/50 to-muted relative overflow-hidden">
           <img
