@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/components/ui/use-toast";
@@ -7,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Search, RefreshCw, FileText, Printer, Mail, DollarSign, BarChart as BarChartIcon } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
@@ -303,12 +302,10 @@ export const ReturnsTabContent = () => {
             </CardDescription>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="list">Returns List</TabsTrigger>
-                <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="list">Returns List</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            </TabsList>
           </div>
         </div>
       </CardHeader>

@@ -4,6 +4,7 @@ import { useAdmin } from "@/contexts/AdminContext";
 import { ReturnsTabContent } from "@/components/admin/ReturnsTabContent";
 import { ReturnRequest, Order } from "@/types";
 import { calculateReturnAnalytics } from "@/utils/returnAnalytics";
+import { Tabs } from "@/components/ui/tabs"; // Add Tabs import
 
 export default function AdminReturns() {
   const { orders } = useAdmin();
@@ -27,7 +28,11 @@ export default function AdminReturns() {
           </div>
         </div>
       </div>
-      <ReturnsTabContent />
+      
+      {/* Wrap ReturnsTabContent with Tabs component */}
+      <Tabs defaultValue="list">
+        <ReturnsTabContent />
+      </Tabs>
     </div>
   );
 }
