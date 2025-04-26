@@ -1,7 +1,7 @@
 
-import { useAdmin } from "@/contexts/AdminContext";
 import { ProductsTabContent } from "@/components/admin/ProductsTabContent";
 import { ProductFormDialog } from "@/components/admin/ProductFormDialog";
+import { useAdmin } from "@/contexts/AdminContext";
 import { colorOptions } from "@/contexts/AdminContext";
 
 export default function AdminProducts() {
