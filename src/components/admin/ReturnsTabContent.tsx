@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, RefreshCw, FileText, Printer, Mail, DollarSign, BarChart } from "lucide-react";
+import { Search, RefreshCw, FileText, Printer, Mail, DollarSign, BarChart as BarChartIcon } from "lucide-react";
 import { StatusBadge } from "./StatusBadge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -15,7 +15,8 @@ import {
   ReturnStatus, 
   OrderStatus, 
   RefundStatus,
-  ReturnAnalytics 
+  ReturnAnalytics,
+  EmailStatus
 } from "@/types";
 import { generateReturnLabel, downloadReturnLabel } from "@/utils/returnLabels";
 import { sendReturnStatusUpdateEmail } from "@/utils/emailService";
@@ -118,7 +119,7 @@ export const ReturnsTabContent = () => {
               if (req.id === returnId) {
                 return {
                   ...req,
-                  lastNotificationStatus: 'Sent',
+                  lastNotificationStatus: 'Sent' as EmailStatus,
                   lastNotificationDate: new Date().toISOString()
                 };
               }
@@ -430,7 +431,7 @@ export const ReturnsTabContent = () => {
                                 if (req.id === viewingReturn.id) {
                                   return {
                                     ...req,
-                                    lastNotificationStatus: 'Sent',
+                                    lastNotificationStatus: 'Sent' as EmailStatus,
                                     lastNotificationDate: new Date().toISOString()
                                   };
                                 }
@@ -440,7 +441,7 @@ export const ReturnsTabContent = () => {
                               setReturnRequests(updatedRequests);
                               setViewingReturn({
                                 ...viewingReturn,
-                                lastNotificationStatus: 'Sent',
+                                lastNotificationStatus: 'Sent' as EmailStatus,
                                 lastNotificationDate: new Date().toISOString()
                               });
                               
@@ -810,7 +811,7 @@ export const ReturnsTabContent = () => {
                 <h4 className="text-sm font-medium mb-4">Returns by Reason</h4>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
+                    <RechartsBarChart
                       data={analytics.returnsByReason}
                       layout="vertical"
                       margin={{ top: 5, right: 30, left: 70, bottom: 5 }}
@@ -821,7 +822,7 @@ export const ReturnsTabContent = () => {
                         formatter={(value: any) => [`${value} returns`, 'Count']} 
                       />
                       <Bar dataKey="count" fill="#8884d8" barSize={20} radius={[0, 4, 4, 0]} />
-                    </BarChart>
+                    </RechartsBarChart>
                   </ResponsiveContainer>
                 </div>
               </div>

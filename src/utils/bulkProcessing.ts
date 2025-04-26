@@ -1,5 +1,5 @@
 
-import { ReturnRequest, ReturnStatus, RefundStatus } from "@/types";
+import { ReturnRequest, ReturnStatus, RefundStatus, EmailStatus } from "@/types";
 import { sendReturnStatusUpdateEmail } from "./emailService";
 
 /**
@@ -48,13 +48,13 @@ export const bulkUpdateReturnStatus = async (
           failedEmails.push(returnRequest.id);
         } else {
           // Update notification status
-          returnRequest.lastNotificationStatus = 'Sent';
+          returnRequest.lastNotificationStatus = 'Sent' as EmailStatus;
           returnRequest.lastNotificationDate = new Date().toISOString();
         }
       } catch (error) {
         console.error(`Failed to send email for return ${returnRequest.id}:`, error);
         failedEmails.push(returnRequest.id);
-        returnRequest.lastNotificationStatus = 'Failed';
+        returnRequest.lastNotificationStatus = 'Failed' as EmailStatus;
       }
     }
   }
