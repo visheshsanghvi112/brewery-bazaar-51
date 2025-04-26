@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/accordion";
 import { Separator } from "@/components/ui/separator";
 import CheckoutLayout from "@/components/checkout/CheckoutLayout";
-import AddressAutocomplete from "@/components/ui/AddressAutocomplete";
+import { AddressAutocomplete } from "@/components/checkout/AddressAutocomplete";
 
 export default function CartPage() {
   const navigate = useNavigate();
