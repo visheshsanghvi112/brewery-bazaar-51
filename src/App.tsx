@@ -33,8 +33,9 @@ function App() {
   const location = useLocation();
   const [isPreviewing, setIsPreviewing] = useState(false);
   
-  // Check if user is in Admin page
+  // Check if user is in Admin page or pages that don't need footer
   const isAdminPage = location.pathname === "/admin";
+  const hideFooter = isAdminPage || location.pathname === "/profile" || location.pathname === "/cart";
   
   useEffect(() => {
     // Create a MutationObserver
@@ -97,7 +98,7 @@ function App() {
           </Suspense>
         </main>
         
-        {!isAdminPage && <Footer />}
+        {!hideFooter && <Footer />}
       </CartProvider>
       
       <Toaster />
