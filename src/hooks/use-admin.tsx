@@ -5,7 +5,14 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
 import { onAuthStateChanged } from 'firebase/auth';
 
-export function useAdmin() {
+// Define a TypeScript interface for the hook's return value
+interface UseAdminReturn {
+  isAdmin: boolean;
+  isLoading: boolean;
+  setAdminStatus: (status: boolean) => void;
+}
+
+export function useAdmin(): UseAdminReturn {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   
