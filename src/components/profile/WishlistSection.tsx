@@ -21,8 +21,12 @@ export default function WishlistSection() {
     try {
       setLoading(true);
       console.log("Fetching wishlist for user:", auth.currentUser.uid);
+      
+      // Get wishlist product IDs for the current user
       const items = await getWishlist(auth.currentUser.uid);
       console.log("Wishlist items fetched:", items);
+      
+      // Set the wishlist items in state
       setWishlistItems(items);
     } catch (error) {
       console.error("Error loading wishlist:", error);
@@ -36,11 +40,14 @@ export default function WishlistSection() {
     }
   };
 
-  // Load wishlist when component mounts and auth state changes
+  // Load wishlist immediately when auth state is confirmed
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        loadWishlist();
+        // Delay the initial load slightly to ensure Firebase is ready
+        setTimeout(() => {
+          loadWishlist();
+        }, 500);
       } else {
         setWishlistItems([]);
         setLoading(false);
@@ -53,7 +60,9 @@ export default function WishlistSection() {
   // Add focus listener to refresh wishlist when user returns to the page
   useEffect(() => {
     const handleFocus = () => {
-      loadWishlist();
+      if (auth.currentUser) {
+        loadWishlist();
+      }
     };
 
     window.addEventListener('focus', handleFocus);
@@ -87,6 +96,16 @@ export default function WishlistSection() {
     navigate(`/products/${productId}`);
   };
 
+  const handleManualRefresh = () => {
+    if (auth.currentUser) {
+      loadWishlist();
+      toast({
+        title: "Refreshing wishlist",
+        description: "Updating your wishlist items",
+      });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -95,7 +114,7 @@ export default function WishlistSection() {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={loadWishlist} 
+            onClick={handleManualRefresh} 
             disabled={loading}
           >
             {loading ? (

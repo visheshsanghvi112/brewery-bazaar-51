@@ -1,4 +1,3 @@
-
 import { db, auth } from "@/integrations/firebase/client";
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs, arrayUnion, arrayRemove, deleteDoc } from "firebase/firestore";
 import { updatePassword, deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
@@ -42,7 +41,6 @@ export interface UserReview {
   updatedAt: string;
 }
 
-// Get user profile
 export const getUserProfile = async (userId: string): Promise<UserProfile | null> => {
   try {
     const userRef = doc(db, "users", userId);
@@ -58,7 +56,6 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
   }
 };
 
-// Update user profile
 export const updateUserProfile = async (userId: string, data: Partial<UserProfile>): Promise<void> => {
   try {
     const userRef = doc(db, "users", userId);
@@ -75,7 +72,6 @@ export const updateUserProfile = async (userId: string, data: Partial<UserProfil
   }
 };
 
-// Save order
 export const saveOrder = async (userId: string, order: Order): Promise<string> => {
   try {
     const userOrder: UserOrder = {
@@ -94,7 +90,6 @@ export const saveOrder = async (userId: string, order: Order): Promise<string> =
   }
 };
 
-// Get user orders
 export const getUserOrders = async (userId: string): Promise<UserOrder[]> => {
   try {
     const ordersCollection = collection(db, "orders");
@@ -111,7 +106,6 @@ export const getUserOrders = async (userId: string): Promise<UserOrder[]> => {
   }
 };
 
-// Update order status
 export const updateOrderStatus = async (orderId: string, status: OrderStatus): Promise<void> => {
   try {
     const orderRef = doc(db, "orders", orderId);
@@ -125,13 +119,13 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus): P
   }
 };
 
-// Wishlist operations
 export const addToWishlist = async (userId: string, productId: string): Promise<void> => {
   try {
     const userRef = doc(db, "users", userId);
     await updateDoc(userRef, {
       wishlist: arrayUnion(productId)
     });
+    console.log(`Product ${productId} added to wishlist for user ${userId}`);
   } catch (error) {
     console.error("Error adding to wishlist:", error);
     throw error;
@@ -144,6 +138,7 @@ export const removeFromWishlist = async (userId: string, productId: string): Pro
     await updateDoc(userRef, {
       wishlist: arrayRemove(productId)
     });
+    console.log(`Product ${productId} removed from wishlist for user ${userId}`);
   } catch (error) {
     console.error("Error removing from wishlist:", error);
     throw error;
@@ -152,31 +147,44 @@ export const removeFromWishlist = async (userId: string, productId: string): Pro
 
 export const getWishlist = async (userId: string): Promise<Product[]> => {
   try {
+    console.log(`Getting wishlist for user ${userId}`);
     const userRef = doc(db, "users", userId);
     const userSnap = await getDoc(userRef);
     
     if (userSnap.exists() && userSnap.data().wishlist) {
       const wishlistIds = userSnap.data().wishlist as string[];
+      console.log(`Found wishlist IDs:`, wishlistIds);
       
-      if (wishlistIds.length === 0) return [];
+      if (wishlistIds.length === 0) {
+        console.log(`Wishlist is empty for user ${userId}`);
+        return [];
+      }
       
       const productsCollection = collection(db, "products");
       const q = query(productsCollection, where("id", "in", wishlistIds));
       const querySnapshot = await getDocs(q);
       
-      return querySnapshot.docs.map(doc => ({
+      const products = querySnapshot.docs.map(doc => ({
         ...doc.data(),
         id: doc.id
       })) as Product[];
+      
+      console.log(`Retrieved ${products.length} products from wishlist`);
+      return products;
+    } else {
+      console.log(`No wishlist found for user ${userId} or wishlist is undefined`);
+      // Initialize wishlist if it doesn't exist
+      await updateDoc(userRef, { wishlist: [] }).catch(error => {
+        console.log("Error initializing wishlist (may already exist):", error);
+      });
+      return [];
     }
-    return [];
   } catch (error) {
     console.error("Error fetching wishlist:", error);
     throw error;
   }
 };
 
-// User notification preferences
 export const updateNotificationPreferences = async (userId: string, preferences: UserProfile['notificationPreferences']): Promise<void> => {
   try {
     const userRef = doc(db, "users", userId);
@@ -189,16 +197,13 @@ export const updateNotificationPreferences = async (userId: string, preferences:
   }
 };
 
-// User account management
 export const changeUserPassword = async (currentPassword: string, newPassword: string): Promise<void> => {
   try {
     const user = auth.currentUser;
     if (user && user.email) {
-      // Re-authenticate user before changing password
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
       await reauthenticateWithCredential(user, credential);
       
-      // Change password
       await updatePassword(user, newPassword);
     } else {
       throw new Error("User not found or missing email");
@@ -213,17 +218,14 @@ export const deleteUserAccount = async (password: string): Promise<void> => {
   try {
     const user = auth.currentUser;
     if (user && user.email) {
-      // Re-authenticate user before deletion
       const credential = EmailAuthProvider.credential(user.email, password);
       await reauthenticateWithCredential(user, credential);
       
-      // Delete user profile from Firestore
       if (user.uid) {
         const userRef = doc(db, "users", user.uid);
         await deleteDoc(userRef);
       }
       
-      // Delete Firebase Auth user
       await deleteUser(user);
     } else {
       throw new Error("User not found or missing email");
@@ -234,7 +236,6 @@ export const deleteUserAccount = async (password: string): Promise<void> => {
   }
 };
 
-// Review management
 export const addReview = async (userId: string, productId: string, rating: number, content: string): Promise<void> => {
   try {
     const reviewsCollection = collection(db, "reviews");
