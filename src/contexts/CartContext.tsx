@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer } from 'react';
 import { Product, ProductVariant, Cart, Order, Address, Customer, OrderStatus, ReturnRequest, ReturnStatus } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
@@ -12,6 +13,7 @@ import {
 import { CartContextType } from './cart/cartTypes';
 import { createOrder, updateCustomer } from './cart/orderManager';
 import { saveOrder } from '@/lib/firebase/userOperations';
+import { auth } from '@/integrations/firebase/client'; // Add auth import
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 

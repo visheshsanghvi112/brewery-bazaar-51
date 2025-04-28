@@ -34,7 +34,6 @@ export default function Profile() {
         setUser(currentUser);
         setDisplayName(currentUser.displayName || "");
         
-        // Fetch user profile from Firestore
         try {
           const profile = await getUserProfile(currentUser.uid);
           if (profile) {
@@ -42,7 +41,6 @@ export default function Profile() {
             setPhone(profile.phone || "");
           }
           
-          // Fetch user orders from Firestore
           const orders = await getUserOrders(currentUser.uid);
           setFirestoreOrders(orders);
         } catch (error) {
@@ -82,12 +80,10 @@ export default function Profile() {
   const handleUpdateProfile = async () => {
     try {
       if (auth.currentUser) {
-        // Update Firebase Auth profile
         await updateProfile(auth.currentUser, {
           displayName: displayName
         });
         
-        // Update Firestore profile
         await updateUserProfile(auth.currentUser.uid, {
           displayName,
           phone,
@@ -148,15 +144,17 @@ export default function Profile() {
     return <div>Loading...</div>;
   }
 
-  // Filter orders to show both local and Firestore orders
   const allOrders = [...orders, ...firestoreOrders.filter(fo => 
     !orders.some(o => o.id === fo.id)
   )];
   
+  const userReturns = returnRequests.filter(returnReq => 
+    allOrders.some(order => order.id === returnReq.orderId)
+  );
+  
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        {/* Profile Overview Card */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -169,7 +167,6 @@ export default function Profile() {
           </CardHeader>
           <CardContent>
             <div className="flex flex-col md:flex-row gap-8">
-              {/* Profile Picture and Basic Info */}
               <div className="flex-shrink-0">
                 <Avatar className="h-32 w-32">
                   {user.photoURL ? (
@@ -181,7 +178,6 @@ export default function Profile() {
                   )}
                 </Avatar>
               </div>
-              
               <div className="flex-grow space-y-6">
                 {isEditing ? (
                   <div className="space-y-4">
@@ -236,7 +232,6 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {/* Addresses Card */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -284,7 +279,6 @@ export default function Profile() {
           </CardContent>
         </Card>
 
-        {/* Orders and Returns Tabs */}
         <Card>
           <CardHeader>
             <CardTitle>My Activity</CardTitle>
