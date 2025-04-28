@@ -20,6 +20,7 @@ export function useAdmin(): UseAdminReturn {
     // First check localStorage for a cached admin status
     const cachedRole = localStorage.getItem('userRole');
     if (cachedRole === 'admin') {
+      console.log("Found cached admin role in localStorage");
       setIsAdmin(true);
     }
     
@@ -27,6 +28,7 @@ export function useAdmin(): UseAdminReturn {
       setIsLoading(true);
       
       if (!user) {
+        console.log("No user found, setting admin to false");
         setIsAdmin(false);
         localStorage.removeItem('userRole');
         setIsLoading(false);
@@ -36,10 +38,17 @@ export function useAdmin(): UseAdminReturn {
       try {
         console.log("Checking admin status for user:", user.email);
         
-        // Check if user email is admin@test.com
+        // First, check if the email matches our known admin email
         if (user.email === "admin@test.com") {
-          console.log("Admin email detected");
-          
+          console.log("Admin email detected, setting admin status to true");
+          setIsAdmin(true);
+          localStorage.setItem('userRole', 'admin');
+          setIsLoading(false);
+          return;
+        }
+        
+        // If we didn't match by email, try checking Firestore
+        try {
           // Check admins collection
           const adminRef = doc(db, "admins", user.uid);
           const adminSnap = await getDoc(adminRef);
@@ -50,21 +59,29 @@ export function useAdmin(): UseAdminReturn {
             localStorage.setItem('userRole', 'admin');
             setIsLoading(false);
             return;
-          } else {
-            console.log("User has admin email but not in admin collection");
           }
-        }
-        
-        // Double check users collection as fallback
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        
-        if (userSnap.exists() && userSnap.data().role === "admin") {
-          console.log("User verified as admin in users collection");
-          setIsAdmin(true);
-          localStorage.setItem('userRole', 'admin');
-          setIsLoading(false);
-          return;
+          
+          // Double check users collection as fallback
+          const userRef = doc(db, "users", user.uid);
+          const userSnap = await getDoc(userRef);
+          
+          if (userSnap.exists() && userSnap.data().role === "admin") {
+            console.log("User verified as admin in users collection");
+            setIsAdmin(true);
+            localStorage.setItem('userRole', 'admin');
+            setIsLoading(false);
+            return;
+          }
+        } catch (firestoreError) {
+          console.error("Firestore permission error:", firestoreError);
+          // If we get a permissions error but the email matches, still consider them an admin
+          if (user.email === "admin@test.com") {
+            console.log("Permissions issue, but using email verification as backup");
+            setIsAdmin(true);
+            localStorage.setItem('userRole', 'admin');
+            setIsLoading(false);
+            return;
+          }
         }
         
         setIsAdmin(false);

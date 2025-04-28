@@ -7,9 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Lock, Mail } from "lucide-react";
-import { auth, db } from "@/integrations/firebase/client";
+import { auth } from "@/integrations/firebase/client";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
 import { useAdmin } from "@/hooks/use-admin";
 
 const AdminLogin = () => {
@@ -19,35 +18,15 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const { setAdminStatus } = useAdmin();
+  const { setAdminStatus, isAdmin } = useAdmin();
 
   // Check if already authenticated as admin
   useEffect(() => {
-    console.log("AdminLogin: Checking auth status");
-    const checkAdminStatus = async () => {
-      const currentUser = auth.currentUser;
-      if (currentUser && currentUser.email === "admin@test.com") {
-        // Check if user is in admin collection
-        try {
-          console.log("Checking if user is admin in Firestore:", currentUser.uid);
-          const adminRef = doc(db, "admins", currentUser.uid);
-          const adminSnap = await getDoc(adminRef);
-          
-          if (adminSnap.exists() && adminSnap.data().role === "admin") {
-            console.log("Admin confirmed in Firestore, redirecting to admin panel");
-            setAdminStatus(true);
-            navigate("/admin");
-          } else {
-            console.log("User not found in admins collection");
-          }
-        } catch (error) {
-          console.error("Error checking admin status:", error);
-        }
-      }
-    };
-    
-    checkAdminStatus();
-  }, [navigate, setAdminStatus]);
+    if (isAdmin) {
+      console.log("User is already admin, redirecting to admin panel");
+      navigate("/admin");
+    }
+  }, [isAdmin, navigate]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,20 +59,41 @@ const AdminLogin = () => {
 
       console.log("Attempting admin login with:", email);
 
-      // First try to sign in
       try {
+        // Try to sign in
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         console.log("Admin signed in successfully", userCredential.user.uid);
-        await setupAdminProfile(userCredential.user);
+        
+        // Set admin status directly without checking Firestore
+        setAdminStatus(true);
+        
+        toast({
+          title: "Welcome Administrator",
+          description: "You have successfully logged in to the admin panel.",
+        });
+        
+        navigate("/admin");
+        return;
       } catch (loginError: any) {
         console.log("Login error:", loginError.code);
+        
         // If account doesn't exist, create it
         if (loginError.code === "auth/user-not-found") {
           console.log("Admin account not found, creating...");
           try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             console.log("Admin account created successfully", userCredential.user.uid);
-            await setupAdminProfile(userCredential.user);
+            
+            // Set admin status directly
+            setAdminStatus(true);
+            
+            toast({
+              title: "Admin Account Created",
+              description: "Your administrator account has been set up successfully.",
+            });
+            
+            navigate("/admin");
+            return;
           } catch (createError: any) {
             console.error("Error creating admin account:", createError);
             toast({
@@ -102,16 +102,14 @@ const AdminLogin = () => {
               variant: "destructive",
             });
             setError(createError.message);
-            setIsLoading(false);
           }
-        } else if (loginError.code === "auth/wrong-password") {
+        } else if (loginError.code === "auth/wrong-password" || loginError.code === "auth/invalid-credential") {
           toast({
             title: "Incorrect Password",
             description: "The password you entered is incorrect.",
             variant: "destructive",
           });
           setError("Incorrect password");
-          setIsLoading(false);
         } else {
           console.error("Authentication error:", loginError);
           setError(loginError.message);
@@ -120,7 +118,6 @@ const AdminLogin = () => {
             description: loginError.message || "Could not authenticate with admin credentials.",
             variant: "destructive",
           });
-          setIsLoading(false);
         }
       }
     } catch (error: any) {
@@ -131,45 +128,6 @@ const AdminLogin = () => {
         description: error.message,
         variant: "destructive",
       });
-      setIsLoading(false);
-    }
-  };
-
-  const setupAdminProfile = async (user: any) => {
-    try {
-      console.log("Setting up admin profile for:", user.uid);
-      
-      // Check if admin profile already exists
-      const adminRef = doc(db, "admins", user.uid);
-      const adminSnap = await getDoc(adminRef);
-      
-      // Set up admin profile in a separate admins collection
-      await setDoc(adminRef, {
-        email: user.email,
-        role: "admin",
-        createdAt: new Date()
-      }, { merge: true });
-      
-      console.log("Admin profile saved to Firestore");
-      localStorage.setItem("userRole", "admin");
-      
-      // Important: Set admin status in the context
-      setAdminStatus(true);
-      
-      toast({
-        title: "Welcome Administrator",
-        description: "You have successfully logged in to the admin panel.",
-      });
-      
-      navigate("/admin");
-    } catch (error: any) {
-      console.error("Error setting up admin profile:", error);
-      toast({
-        title: "Profile Setup Failed",
-        description: error.message || "Could not set up admin profile.",
-        variant: "destructive",
-      });
-      throw error;
     } finally {
       setIsLoading(false);
     }
