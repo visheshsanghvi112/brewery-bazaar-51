@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,6 +18,28 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Check if already authenticated as admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      const currentUser = auth.currentUser;
+      if (currentUser && currentUser.email === "admin@test.com") {
+        // Check if user is in admin collection
+        try {
+          const adminRef = doc(db, "admins", currentUser.uid);
+          const adminSnap = await getDoc(adminRef);
+          
+          if (adminSnap.exists() && adminSnap.data().role === "admin") {
+            navigate("/admin");
+          }
+        } catch (error) {
+          console.error("Error checking admin status:", error);
+        }
+      }
+    };
+    
+    checkAdminStatus();
+  }, [navigate]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,33 +70,37 @@ const AdminLogin = () => {
         return;
       }
 
+      // First try to sign in
       try {
-        // Try signing in first
-        await signInWithEmailAndPassword(auth, email, password)
-          .then(async (userCredential) => {
-            await setupAdminProfile(userCredential.user);
-          })
-          .catch(async (loginError) => {
-            // If login fails, try creating the account
-            console.log("Admin login failed, attempting to create admin account");
-            await createUserWithEmailAndPassword(auth, email, password)
-              .then(async (userCredential) => {
-                await setupAdminProfile(userCredential.user);
-              })
-              .catch((createError) => {
-                console.error("Error creating admin account:", createError);
-                setError(createError.message);
-                throw createError;
-              });
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        console.log("Admin signed in successfully", userCredential.user.uid);
+        await setupAdminProfile(userCredential.user);
+      } catch (loginError: any) {
+        console.log("Login error:", loginError.code);
+        // If account doesn't exist, create it
+        if (loginError.code === "auth/user-not-found") {
+          console.log("Admin account not found, creating...");
+          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+          console.log("Admin account created successfully", userCredential.user.uid);
+          await setupAdminProfile(userCredential.user);
+        } else if (loginError.code === "auth/wrong-password") {
+          toast({
+            title: "Incorrect Password",
+            description: "The password you entered is incorrect.",
+            variant: "destructive",
           });
-      } catch (authError: any) {
-        console.error("Authentication error:", authError);
-        setError(authError.message);
-        toast({
-          title: "Authentication failed",
-          description: authError.message || "Could not authenticate with admin credentials.",
-          variant: "destructive",
-        });
+          setError("Incorrect password");
+          setIsLoading(false);
+        } else {
+          console.error("Authentication error:", loginError);
+          setError(loginError.message);
+          toast({
+            title: "Authentication failed",
+            description: loginError.message || "Could not authenticate with admin credentials.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+        }
       }
     } catch (error: any) {
       console.error("Login process error:", error);
@@ -84,15 +110,18 @@ const AdminLogin = () => {
         description: error.message,
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
     }
   };
 
   const setupAdminProfile = async (user: any) => {
     try {
+      // Check if admin profile already exists
+      const adminRef = doc(db, "admins", user.uid);
+      const adminSnap = await getDoc(adminRef);
+      
       // Set up admin profile in a separate admins collection
-      await setDoc(doc(db, "admins", user.uid), {
+      await setDoc(adminRef, {
         email: user.email,
         role: "admin",
         createdAt: new Date()
@@ -106,9 +135,16 @@ const AdminLogin = () => {
       });
       
       navigate("/admin");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error setting up admin profile:", error);
+      toast({
+        title: "Profile Setup Failed",
+        description: error.message || "Could not set up admin profile.",
+        variant: "destructive",
+      });
       throw error;
+    } finally {
+      setIsLoading(false);
     }
   };
 

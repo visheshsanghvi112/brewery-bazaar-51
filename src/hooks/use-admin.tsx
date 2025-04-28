@@ -3,55 +3,68 @@ import { useState, useEffect } from 'react';
 import { auth } from "@/integrations/firebase/client";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
+import { onAuthStateChanged } from 'firebase/auth';
 
 export function useAdmin() {
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
-  
-  const setAdminStatus = (status: boolean) => {
-    setIsAdmin(status);
-    if (status) {
-      localStorage.setItem('userRole', 'admin');
-    } else {
-      localStorage.removeItem('userRole');
-    }
-  };
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   
   useEffect(() => {
-    const checkAdmin = async () => {
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
+    const checkAdmin = async (user: any) => {
+      setIsLoading(true);
+      
+      if (!user) {
         setIsAdmin(false);
+        localStorage.removeItem('userRole');
+        setIsLoading(false);
         return;
       }
       
-      // Only check admins collection
       try {
-        const adminRef = doc(db, "admins", currentUser.uid);
+        // Check if user email is admin@test.com
+        if (user.email !== "admin@test.com") {
+          setIsAdmin(false);
+          localStorage.removeItem('userRole');
+          setIsLoading(false);
+          return;
+        }
+        
+        // Check admins collection
+        const adminRef = doc(db, "admins", user.uid);
         const adminSnap = await getDoc(adminRef);
         
         if (adminSnap.exists() && adminSnap.data().role === "admin") {
           setIsAdmin(true);
           localStorage.setItem('userRole', 'admin');
+          setIsLoading(false);
           return;
         }
+        
+        setIsAdmin(false);
+        localStorage.removeItem('userRole');
       } catch (error) {
         console.error("Error checking admin status:", error);
+        setIsAdmin(false);
+        localStorage.removeItem('userRole');
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsAdmin(false);
-      localStorage.removeItem('userRole');
     };
     
-    // Check immediately
-    checkAdmin();
-    
     // Listen for auth state changes
-    const unsubscribe = auth.onAuthStateChanged(() => {
-      checkAdmin();
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      await checkAdmin(user);
     });
+    
+    // Check immediately on initial load
+    if (auth.currentUser) {
+      checkAdmin(auth.currentUser);
+    } else {
+      setIsLoading(false);
+    }
     
     return () => unsubscribe();
   }, []);
   
-  return { isAdmin, setAdminStatus };
+  return { isAdmin, isLoading };
 }

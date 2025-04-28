@@ -11,15 +11,16 @@ import AdminOrders from "./admin/Orders";
 import AdminReturns from "./admin/Returns";
 import AdminCustomers from "./admin/Customers";
 import { AdminProvider } from "@/contexts/AdminContext";
+import { PageLoader } from "@/components/ui/page-loader";
 
 export default function Admin() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isAdmin } = useAdmin();
+  const { isAdmin, isLoading } = useAdmin();
   
-  // Redirect non-admin users to admin login
+  // Redirect non-admin users to admin login after checking
   useEffect(() => {
-    if (!isAdmin) {
+    if (!isLoading && !isAdmin) {
       toast({
         title: "Access Denied",
         description: "Please login with an admin account to access this page.",
@@ -27,9 +28,14 @@ export default function Admin() {
       });
       navigate("/admin-login");
     }
-  }, [isAdmin, navigate, toast]);
+  }, [isAdmin, isLoading, navigate, toast]);
 
-  // If not admin, don't render anything while redirecting
+  // Show loader while checking admin status
+  if (isLoading) {
+    return <PageLoader />;
+  }
+
+  // If not admin and finished loading, don't render anything while redirecting
   if (!isAdmin) {
     return null;
   }
