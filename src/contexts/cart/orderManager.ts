@@ -1,15 +1,51 @@
-
 import { Address, Customer, Order, OrderStatus } from "@/types";
 import { CartState } from "./cartReducer";
+import { db } from "@/integrations/firebase/client";
+import { doc, getDoc, setDoc, runTransaction } from "firebase/firestore";
 
-export const createOrder = (
+// Function to get the next sequence number
+const getNextSequence = async (sequenceName: string): Promise<number> => {
+  const sequenceRef = doc(db, "sequences", sequenceName);
+  
+  try {
+    // Use a transaction to ensure we get a unique number even with concurrent requests
+    const result = await runTransaction(db, async (transaction) => {
+      const sequenceDoc = await transaction.get(sequenceRef);
+      
+      // If the sequence document doesn't exist, create it with initial value 1
+      if (!sequenceDoc.exists()) {
+        transaction.set(sequenceRef, { value: 1 });
+        return 1;
+      }
+      
+      // Otherwise increment the existing value
+      const newValue = (sequenceDoc.data().value || 0) + 1;
+      transaction.update(sequenceRef, { value: newValue });
+      return newValue;
+    });
+    
+    return result;
+  } catch (error) {
+    console.error("Error getting next sequence:", error);
+    // Fallback to timestamp if transaction fails
+    return Date.now();
+  }
+};
+
+// Function to pad the sequence number with leading zeros
+const formatSequenceNumber = (num: number): string => {
+  return num.toString().padStart(2, '0');
+};
+
+export const createOrder = async (
   state: CartState,
   customer: Customer,
   paymentMethod: string,
   orders: Order[]
-): { newOrder: Order; orderId: string } => {
-  // Create order ID
-  const orderId = `ORD-${Date.now().toString().slice(-6)}`;
+): Promise<{ newOrder: Order; orderId: string }> => {
+  // Get next order sequence
+  const sequenceNumber = await getNextSequence("order_sequence");
+  const orderId = `BREW-${formatSequenceNumber(sequenceNumber)}`;
   
   // Calculate subtotal and shipping
   const subtotal = state.total;

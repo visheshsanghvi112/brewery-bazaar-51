@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer } from 'react';
 import { Product, ProductVariant, Cart, Order, Address, Customer, OrderStatus, ReturnRequest, ReturnStatus } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
@@ -13,7 +12,8 @@ import {
 import { CartContextType } from './cart/cartTypes';
 import { createOrder, updateCustomer } from './cart/orderManager';
 import { saveOrder } from '@/lib/firebase/userOperations';
-import { auth } from '@/integrations/firebase/client';
+import { auth, db } from '@/integrations/firebase/client';
+import { doc, getDoc, setDoc, runTransaction } from 'firebase/firestore';
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
@@ -45,7 +45,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateQuantity = (productId: string, variantId: string, quantity: number) => {
     if (quantity < 1) return;
     
-    // Find the item and check stock
     const item = state.items.find(
       item => item.productId === productId && item.variantId === variantId
     );
@@ -72,7 +71,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const placeOrder = async (customer: Customer, paymentMethod: string) => {
     try {
-      // Check if user is authenticated
       if (!auth.currentUser) {
         toast({
           title: 'Authentication required',
@@ -82,23 +80,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
       
-      // Create the order
-      const { newOrder, orderId } = createOrder(state, customer, paymentMethod, orders);
+      const { newOrder, orderId } = await createOrder(state, customer, paymentMethod, orders);
       
-      // Save to Firestore if user is authenticated
       await saveOrder(auth.currentUser.uid, newOrder);
       
-      // Add to orders in localStorage
       setOrders([...orders, newOrder]);
       
-      // Update customer information
       const updatedCustomers = updateCustomer(customer, customers, newOrder.total);
       setCustomers(updatedCustomers);
       
-      // Clear cart
       clearCart();
       
-      // Show success message
       toast({
         title: 'Order placed successfully',
         description: `Your order #${orderId} has been placed and is being processed.`,
@@ -116,8 +108,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const requestReturn = (orderId: string, items: any[], reason: string) => {
-    // Find the order
+  const requestReturn = async (orderId: string, items: any[], reason: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) {
       toast({
@@ -128,43 +119,52 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return {} as ReturnRequest;
     }
 
-    // Create a return request
-    const returnRequest: ReturnRequest = {
-      id: `return-${Date.now()}`,
-      orderId,
-      orderDate: order.date,
-      customerName: order.customer.name,
-      customerEmail: order.customer.email,
-      items,
-      reason,
-      status: 'Requested' as ReturnStatus,
-      createdAt: new Date().toISOString(),
-      scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // Schedule pickup in 2 days
-    };
+    try {
+      const sequenceNumber = await getNextSequence("return_sequence");
+      const returnId = `BREW-RET-${formatSequenceNumber(sequenceNumber)}`;
+      
+      const returnRequest: ReturnRequest = {
+        id: returnId,
+        orderId,
+        orderDate: order.date,
+        customerName: order.customer.name,
+        customerEmail: order.customer.email,
+        items,
+        reason,
+        status: 'Requested' as ReturnStatus,
+        createdAt: new Date().toISOString(),
+        scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+      };
 
-    // Update the orders status
-    const updatedOrders = orders.map(o => {
-      if (o.id === orderId) {
-        return {
-          ...o,
-          status: 'Return Requested' as OrderStatus,
-          returnRequest: returnRequest.id
-        };
-      }
-      return o;
-    });
+      const updatedOrders = orders.map(o => {
+        if (o.id === orderId) {
+          return {
+            ...o,
+            status: 'Return Requested' as OrderStatus,
+            returnRequest: returnRequest.id
+          };
+        }
+        return o;
+      });
 
-    // Update local storage
-    setReturnRequests([...returnRequests, returnRequest]);
-    setOrders(updatedOrders);
+      setReturnRequests([...returnRequests, returnRequest]);
+      setOrders(updatedOrders);
 
-    // Show success message
-    toast({
-      title: 'Return requested',
-      description: `Your return for order #${orderId} has been requested and will be picked up on ${new Date(returnRequest.scheduledDate).toLocaleDateString()}.`,
-    });
+      toast({
+        title: 'Return requested',
+        description: `Your return for order #${orderId} has been requested and will be picked up on ${new Date(returnRequest.scheduledDate).toLocaleDateString()}.`,
+      });
 
-    return returnRequest;
+      return returnRequest;
+    } catch (error) {
+      console.error("Error requesting return:", error);
+      toast({
+        title: 'Return request failed',
+        description: 'There was an error processing your return request. Please try again.',
+        variant: 'destructive',
+      });
+      throw error;
+    }
   };
   
   const clearCart = () => {
@@ -199,4 +199,32 @@ export const useCart = (): CartContextType => {
     throw new Error('useCart must be used within a CartProvider');
   }
   return context;
+};
+
+const getNextSequence = async (sequenceName: string): Promise<number> => {
+  const sequenceRef = doc(db, "sequences", sequenceName);
+  
+  try {
+    const result = await runTransaction(db, async (transaction) => {
+      const sequenceDoc = await transaction.get(sequenceRef);
+      
+      if (!sequenceDoc.exists()) {
+        transaction.set(sequenceRef, { value: 1 });
+        return 1;
+      }
+      
+      const newValue = (sequenceDoc.data().value || 0) + 1;
+      transaction.update(sequenceRef, { value: newValue });
+      return newValue;
+    });
+    
+    return result;
+  } catch (error) {
+    console.error("Error getting next sequence:", error);
+    return Date.now();
+  }
+};
+
+const formatSequenceNumber = (num: number): string => {
+  return num.toString().padStart(2, '0');
 };
