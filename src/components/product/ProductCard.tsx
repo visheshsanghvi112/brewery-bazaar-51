@@ -7,7 +7,7 @@ import { Sparkles, Star, Heart } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import { auth } from "@/integrations/firebase/client";
-import { addToWishlist, removeFromWishlist, getWishlist } from "@/lib/firebase/userOperations";
+import { addToWishlist, removeFromWishlist, getUserProfile } from "@/lib/firebase/userOperations";
 import { useToast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
@@ -20,15 +20,23 @@ export default function ProductCard({ product, isMobile }: ProductCardProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  // Check if product is in wishlist when component mounts
   useEffect(() => {
     const checkWishlist = async () => {
-      if (auth.currentUser) {
-        try {
-          const wishlist = await getWishlist(auth.currentUser.uid);
-          setIsInWishlist(wishlist.some(item => item.id === product.id));
-        } catch (error) {
-          console.error("Error checking wishlist:", error);
+      if (!auth.currentUser) return;
+      
+      try {
+        setLoading(true);
+        const userProfile = await getUserProfile(auth.currentUser.uid);
+        
+        if (userProfile && userProfile.wishlist) {
+          console.log(`Checking if product ${product.id} is in wishlist:`, userProfile.wishlist);
+          setIsInWishlist(userProfile.wishlist.includes(product.id));
         }
+      } catch (error) {
+        console.error("Error checking wishlist status:", error);
+      } finally {
+        setLoading(false);
       }
     };
 

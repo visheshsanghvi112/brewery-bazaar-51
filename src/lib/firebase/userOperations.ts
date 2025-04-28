@@ -1,3 +1,4 @@
+
 import { db, auth } from "@/integrations/firebase/client";
 import { doc, getDoc, setDoc, updateDoc, collection, addDoc, query, where, getDocs, arrayUnion, arrayRemove, deleteDoc } from "firebase/firestore";
 import { updatePassword, deleteUser, EmailAuthProvider, reauthenticateWithCredential } from "firebase/auth";
@@ -121,10 +122,23 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus): P
 
 export const addToWishlist = async (userId: string, productId: string): Promise<void> => {
   try {
+    // First ensure the user document exists with a wishlist array
     const userRef = doc(db, "users", userId);
-    await updateDoc(userRef, {
-      wishlist: arrayUnion(productId)
-    });
+    const userSnap = await getDoc(userRef);
+    
+    if (!userSnap.exists()) {
+      // Create a new user document with wishlist if it doesn't exist
+      await setDoc(userRef, {
+        wishlist: [productId],
+        email: auth.currentUser?.email || '',
+        displayName: auth.currentUser?.displayName || '',
+      });
+    } else {
+      // Update existing user document
+      await updateDoc(userRef, {
+        wishlist: arrayUnion(productId)
+      });
+    }
     console.log(`Product ${productId} added to wishlist for user ${userId}`);
   } catch (error) {
     console.error("Error adding to wishlist:", error);
@@ -151,34 +165,39 @@ export const getWishlist = async (userId: string): Promise<Product[]> => {
     const userRef = doc(db, "users", userId);
     const userSnap = await getDoc(userRef);
     
-    if (userSnap.exists() && userSnap.data().wishlist) {
-      const wishlistIds = userSnap.data().wishlist as string[];
-      console.log(`Found wishlist IDs:`, wishlistIds);
-      
-      if (wishlistIds.length === 0) {
-        console.log(`Wishlist is empty for user ${userId}`);
-        return [];
-      }
-      
-      const productsCollection = collection(db, "products");
-      const q = query(productsCollection, where("id", "in", wishlistIds));
-      const querySnapshot = await getDocs(q);
-      
-      const products = querySnapshot.docs.map(doc => ({
-        ...doc.data(),
-        id: doc.id
-      })) as Product[];
-      
-      console.log(`Retrieved ${products.length} products from wishlist`);
-      return products;
-    } else {
-      console.log(`No wishlist found for user ${userId} or wishlist is undefined`);
-      // Initialize wishlist if it doesn't exist
-      await updateDoc(userRef, { wishlist: [] }).catch(error => {
-        console.log("Error initializing wishlist (may already exist):", error);
-      });
+    if (!userSnap.exists()) {
+      console.log(`User ${userId} does not exist`);
       return [];
     }
+    
+    const userData = userSnap.data();
+    if (!userData.wishlist) {
+      console.log(`Wishlist not found for user ${userId}, initializing empty wishlist`);
+      // Initialize wishlist if it doesn't exist
+      await updateDoc(userRef, { wishlist: [] });
+      return [];
+    }
+    
+    const wishlistIds = userData.wishlist as string[];
+    console.log(`Found ${wishlistIds.length} wishlist IDs:`, wishlistIds);
+    
+    if (wishlistIds.length === 0) {
+      console.log(`Wishlist is empty for user ${userId}`);
+      return [];
+    }
+    
+    // Get all products that match the wishlist IDs
+    const productsCollection = collection(db, "products");
+    const q = query(productsCollection, where("id", "in", wishlistIds));
+    const querySnapshot = await getDocs(q);
+    
+    const products = querySnapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id
+    })) as Product[];
+    
+    console.log(`Retrieved ${products.length} products from wishlist`);
+    return products;
   } catch (error) {
     console.error("Error fetching wishlist:", error);
     throw error;

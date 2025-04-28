@@ -2,12 +2,13 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { auth } from "@/integrations/firebase/client";
-import { getWishlist, removeFromWishlist } from "@/lib/firebase/userOperations";
+import { auth, db } from "@/integrations/firebase/client";
+import { getWishlist, removeFromWishlist, getUserProfile } from "@/lib/firebase/userOperations";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, ShoppingBag, RefreshCw } from "lucide-react";
 import { Product } from "@/types";
 import { useNavigate } from "react-router-dom";
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 export default function WishlistSection() {
   const [wishlistItems, setWishlistItems] = useState<Product[]>([]);
@@ -16,23 +17,54 @@ export default function WishlistSection() {
   const navigate = useNavigate();
 
   const loadWishlist = async () => {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser) {
+      setWishlistItems([]);
+      setLoading(false);
+      return;
+    }
     
     try {
       setLoading(true);
       console.log("Fetching wishlist for user:", auth.currentUser.uid);
       
-      // Get wishlist product IDs for the current user
-      const items = await getWishlist(auth.currentUser.uid);
-      console.log("Wishlist items fetched:", items);
+      // First get the user profile to get the wishlist IDs
+      const userProfile = await getUserProfile(auth.currentUser.uid);
+      console.log("User profile fetched:", userProfile);
       
-      // Set the wishlist items in state
-      setWishlistItems(items);
+      if (!userProfile || !userProfile.wishlist || userProfile.wishlist.length === 0) {
+        console.log("No wishlist found or wishlist is empty");
+        setWishlistItems([]);
+        setLoading(false);
+        return;
+      }
+      
+      // Directly query Firestore for products using the wishlist IDs
+      const productIds = userProfile.wishlist;
+      console.log("Fetching products with IDs:", productIds);
+      
+      if (productIds.length === 0) {
+        setWishlistItems([]);
+        setLoading(false);
+        return;
+      }
+      
+      const productsCollection = collection(db, "products");
+      const q = query(productsCollection, where("id", "in", productIds));
+      const querySnapshot = await getDocs(q);
+      
+      const products: Product[] = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Product));
+      
+      console.log("Products fetched:", products);
+      setWishlistItems(products);
+      
     } catch (error) {
       console.error("Error loading wishlist:", error);
       toast({
         title: "Error",
-        description: "Failed to load your wishlist",
+        description: "Failed to load your wishlist. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -40,14 +72,14 @@ export default function WishlistSection() {
     }
   };
 
-  // Load wishlist immediately when auth state is confirmed
+  // Load wishlist when auth state is confirmed
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        // Delay the initial load slightly to ensure Firebase is ready
+        // Use a slightly longer delay to ensure Firebase is fully initialized
         setTimeout(() => {
           loadWishlist();
-        }, 500);
+        }, 1000);
       } else {
         setWishlistItems([]);
         setLoading(false);
