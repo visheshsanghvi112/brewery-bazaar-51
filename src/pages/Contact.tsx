@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/components/ui/use-toast";
-import { Mail, Phone, MapPin, Send, AlertTriangle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Mail, Phone, MapPin, Send, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Contact() {
   const { toast } = useToast();
@@ -17,42 +18,57 @@ export default function Contact() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState(false);
+  
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setFormError(null);
+    setFormSuccess(false);
     
     try {
-      // Make sure we have all required fields
-      if (!name || !email || !subject || !message) {
-        throw new Error("Please fill out all fields");
+      // Validate all fields
+      if (!name.trim()) {
+        throw new Error("Please enter your name");
       }
-      
-      console.log("Attempting to submit form to Firestore...");
-      
-      // Add submission to Firestore
-      const contactRef = collection(db, "contact_submissions");
+      if (!email.trim()) {
+        throw new Error("Please enter your email");
+      }
+      if (!validateEmail(email)) {
+        throw new Error("Please enter a valid email address");
+      }
+      if (!subject.trim()) {
+        throw new Error("Please enter a subject");
+      }
+      if (!message.trim() || message.length < 10) {
+        throw new Error("Please enter a message (minimum 10 characters)");
+      }
       
       // Create the data object
       const contactData = {
-        name,
-        email,
-        subject,
-        message,
+        name: name.trim(),
+        email: email.trim(),
+        subject: subject.trim(),
+        message: message.trim(),
         createdAt: serverTimestamp(),
       };
       
-      console.log("Contact data being submitted:", contactData);
-      
       // Submit to Firestore
-      const docRef = await addDoc(contactRef, contactData);
+      const docRef = await addDoc(collection(db, "contact_submissions"), contactData);
       
       console.log("Document written with ID:", docRef.id);
       
+      // Show success message
+      setFormSuccess(true);
       toast({
-        title: "Message sent",
-        description: "We've received your message and will get back to you soon!",
+        title: "Message sent successfully!",
+        description: "We'll get back to you as soon as possible.",
+        variant: "default",
       });
       
       // Reset form
@@ -60,24 +76,21 @@ export default function Contact() {
       setEmail("");
       setSubject("");
       setMessage("");
+      
     } catch (error) {
       console.error("Error submitting contact form:", error);
+      setFormSuccess(false);
       
-      // Log detailed error information
-      if ((error as any)?.code) {
-        console.error("Error code:", (error as any).code);
-      }
-      
-      // Handle specific errors
-      if ((error as any)?.code === "permission-denied") {
-        setFormError("Permission denied when saving your message. Our team has been notified.");
+      // Handle validation errors
+      if ((error as Error).message) {
+        setFormError((error as Error).message);
         toast({
-          title: "Permissions Error",
-          description: "Your message couldn't be saved due to a permissions issue. Please ensure you're signed in if required.",
+          title: "Validation Error",
+          description: (error as Error).message,
           variant: "destructive",
         });
       } else {
-        setFormError((error as Error).message || "There was an error sending your message. Please try again.");
+        setFormError("There was an error sending your message. Please try again.");
         toast({
           title: "Error",
           description: "There was an error sending your message. Please try again.",
@@ -146,56 +159,80 @@ export default function Contact() {
             </div>
             <div>
               <h2 className="text-2xl font-bold mb-6">Send Us a Message</h2>
-              {formError && (
-                <div className="bg-destructive/15 p-4 rounded-md mb-6 flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-destructive" />
-                  <p className="text-sm text-destructive">{formError}</p>
-                </div>
+              
+              {/* Success Message */}
+              {formSuccess && (
+                <Alert className="mb-6 bg-green-50 border-green-200">
+                  <CheckCircle2 className="h-5 w-5 text-green-600" />
+                  <AlertDescription className="text-green-600">
+                    Your message has been sent successfully! We'll get back to you soon.
+                  </AlertDescription>
+                </Alert>
               )}
+              
+              {/* Error Message */}
+              {formError && (
+                <Alert className="mb-6 bg-destructive/15 border-destructive/20">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  <AlertDescription className="text-destructive">
+                    {formError}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Full Name</Label>
+                  <Label htmlFor="name">Full Name *</Label>
                   <Input 
                     id="name" 
                     value={name} 
                     onChange={(e) => setName(e.target.value)}
                     placeholder="John Doe" 
+                    className={formError && !name.trim() ? "border-destructive" : ""}
                     required 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Email *</Label>
                   <Input 
                     id="email" 
                     type="email" 
                     value={email} 
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="john@example.com" 
+                    className={formError && (!email.trim() || !validateEmail(email)) ? "border-destructive" : ""}
                     required 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="subject">Subject</Label>
+                  <Label htmlFor="subject">Subject *</Label>
                   <Input 
                     id="subject" 
                     value={subject} 
                     onChange={(e) => setSubject(e.target.value)}
                     placeholder="Product inquiry" 
+                    className={formError && !subject.trim() ? "border-destructive" : ""}
                     required 
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="message">Message</Label>
+                  <Label htmlFor="message">Message *</Label>
                   <Textarea 
                     id="message" 
                     value={message} 
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="How can we help you?" 
+                    placeholder="How can we help you? (minimum 10 characters)" 
                     rows={5} 
+                    className={formError && (!message.trim() || message.length < 10) ? "border-destructive" : ""}
                     required 
                   />
                 </div>
-                <Button type="submit" size="lg" disabled={loading} className="w-full">
+                <Button 
+                  type="submit" 
+                  size="lg" 
+                  disabled={loading} 
+                  className="w-full"
+                >
                   {loading ? (
                     "Sending..."
                   ) : (
