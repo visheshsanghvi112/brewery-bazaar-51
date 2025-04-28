@@ -1,5 +1,6 @@
+
 import { Link } from "react-router-dom";
-import { Mail, Phone, MapPin, Instagram, Twitter, Facebook, ChevronRight, CreditCard, Truck, ShieldCheck } from "lucide-react";
+import { Mail, Phone, MapPin, Instagram, Twitter, Facebook, ChevronRight, CreditCard, Truck, ShieldCheck, Check, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
@@ -13,11 +14,19 @@ export default function Footer() {
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<"idle" | "success" | "error" | "duplicate">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Reset status before new submission
+    setSubscriptionStatus("idle");
+    setErrorMessage("");
+    
     if (!email.trim()) {
+      setSubscriptionStatus("error");
+      setErrorMessage("Please enter your email address");
       toast({
         title: "Error",
         description: "Please enter your email address",
@@ -29,6 +38,8 @@ export default function Footer() {
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
+      setSubscriptionStatus("error");
+      setErrorMessage("Please enter a valid email address");
       toast({
         title: "Invalid Email",
         description: "Please enter a valid email address",
@@ -50,6 +61,7 @@ export default function Footer() {
       const querySnapshot = await getDocs(q);
       
       if (!querySnapshot.empty) {
+        setSubscriptionStatus("duplicate");
         toast({
           title: "Already Subscribed",
           description: "This email is already subscribed to our newsletter",
@@ -65,6 +77,7 @@ export default function Footer() {
         createdAt: new Date(),
       });
       
+      setSubscriptionStatus("success");
       toast({
         title: "Success!",
         description: "Thank you for subscribing to our newsletter!",
@@ -74,6 +87,8 @@ export default function Footer() {
       
     } catch (error) {
       console.error("Error subscribing to newsletter:", error);
+      setSubscriptionStatus("error");
+      setErrorMessage("There was an error subscribing to the newsletter. Please try again.");
       toast({
         title: "Error",
         description: "There was an error subscribing to the newsletter. Please try again.",
@@ -81,6 +96,35 @@ export default function Footer() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Display messages based on subscription status
+  const renderSubscriptionMessage = () => {
+    switch (subscriptionStatus) {
+      case "success":
+        return (
+          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md flex items-center text-green-800">
+            <Check className="h-5 w-5 mr-2 text-green-500" />
+            <span>Thank you for subscribing to our newsletter!</span>
+          </div>
+        );
+      case "error":
+        return (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md flex items-center text-red-800">
+            <AlertCircle className="h-5 w-5 mr-2 text-red-500" />
+            <span>{errorMessage}</span>
+          </div>
+        );
+      case "duplicate":
+        return (
+          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md flex items-center text-yellow-800">
+            <AlertCircle className="h-5 w-5 mr-2 text-yellow-500" />
+            <span>This email is already subscribed to our newsletter.</span>
+          </div>
+        );
+      default:
+        return null;
     }
   };
 
@@ -139,7 +183,7 @@ export default function Footer() {
               <Input
                 type="email"
                 placeholder="Your email address"
-                className="flex-1 bg-background"
+                className={`flex-1 bg-background ${subscriptionStatus === "error" ? "border-red-500 focus:border-red-500" : ""}`}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -152,6 +196,7 @@ export default function Footer() {
                 {loading ? "Subscribing..." : "Subscribe"}
               </Button>
             </form>
+            {renderSubscriptionMessage()}
           </div>
         </div>
       </div>
