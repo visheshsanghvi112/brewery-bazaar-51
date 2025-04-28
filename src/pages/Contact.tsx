@@ -29,15 +29,26 @@ export default function Contact() {
         throw new Error("Please fill out all fields");
       }
       
+      console.log("Attempting to submit form to Firestore...");
+      
       // Add submission to Firestore
       const contactRef = collection(db, "contact_submissions");
-      await addDoc(contactRef, {
+      
+      // Create the data object
+      const contactData = {
         name,
         email,
         subject,
         message,
         createdAt: serverTimestamp(),
-      });
+      };
+      
+      console.log("Contact data being submitted:", contactData);
+      
+      // Submit to Firestore
+      const docRef = await addDoc(contactRef, contactData);
+      
+      console.log("Document written with ID:", docRef.id);
       
       toast({
         title: "Message sent",
@@ -52,12 +63,17 @@ export default function Contact() {
     } catch (error) {
       console.error("Error submitting contact form:", error);
       
+      // Log detailed error information
+      if ((error as any)?.code) {
+        console.error("Error code:", (error as any).code);
+      }
+      
       // Handle specific errors
       if ((error as any)?.code === "permission-denied") {
         setFormError("Permission denied when saving your message. Our team has been notified.");
         toast({
           title: "Permissions Error",
-          description: "Your message couldn't be saved due to a permissions issue. We'll fix this soon!",
+          description: "Your message couldn't be saved due to a permissions issue. Please ensure you're signed in if required.",
           variant: "destructive",
         });
       } else {
