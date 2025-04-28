@@ -186,15 +186,24 @@ export const getWishlist = async (userId: string): Promise<Product[]> => {
       return [];
     }
     
-    // Get all products that match the wishlist IDs
-    const productsCollection = collection(db, "products");
-    const q = query(productsCollection, where("id", "in", wishlistIds));
-    const querySnapshot = await getDocs(q);
+    // Get each product individually
+    const products: Product[] = [];
     
-    const products = querySnapshot.docs.map(doc => ({
-      ...doc.data(),
-      id: doc.id
-    })) as Product[];
+    for (const productId of wishlistIds) {
+      try {
+        const productRef = doc(db, "products", productId);
+        const productSnap = await getDoc(productRef);
+        
+        if (productSnap.exists()) {
+          products.push({
+            id: productSnap.id,
+            ...productSnap.data()
+          } as Product);
+        }
+      } catch (err) {
+        console.error(`Error getting product ${productId}:`, err);
+      }
+    }
     
     console.log(`Retrieved ${products.length} products from wishlist`);
     return products;

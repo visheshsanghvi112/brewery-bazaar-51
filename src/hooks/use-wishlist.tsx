@@ -1,9 +1,9 @@
 
 import { useState, useEffect } from "react";
-import { auth } from "@/integrations/firebase/client";
-import { getUserProfile, addToWishlist, removeFromWishlist } from "@/lib/firebase/userOperations";
+import { auth, db } from "@/integrations/firebase/client";
+import { addToWishlist, removeFromWishlist } from "@/lib/firebase/userOperations";
 import { useToast } from "@/hooks/use-toast";
-import { Product } from "@/types";
+import { doc, getDoc } from "firebase/firestore";
 
 export function useWishlist(productId?: string) {
   const [isInWishlist, setIsInWishlist] = useState(false);
@@ -18,14 +18,19 @@ export function useWishlist(productId?: string) {
       
       try {
         setLoading(true);
-        const userProfile = await getUserProfile(auth.currentUser.uid);
+        // Get user document directly from Firestore
+        const userDocRef = doc(db, "users", auth.currentUser.uid);
+        const userDocSnap = await getDoc(userDocRef);
         
-        if (userProfile && userProfile.wishlist) {
-          setWishlistItems(userProfile.wishlist);
+        if (userDocSnap.exists() && userDocSnap.data().wishlist) {
+          const wishlist = userDocSnap.data().wishlist || [];
+          setWishlistItems(wishlist);
           
           if (productId) {
-            setIsInWishlist(userProfile.wishlist.includes(productId));
+            setIsInWishlist(wishlist.includes(productId));
           }
+        } else {
+          setWishlistItems([]);
         }
       } catch (error) {
         console.error("Error checking wishlist:", error);

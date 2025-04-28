@@ -3,12 +3,12 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { auth, db } from "@/integrations/firebase/client";
-import { getWishlist, removeFromWishlist, getUserProfile } from "@/lib/firebase/userOperations";
+import { removeFromWishlist, getUserProfile } from "@/lib/firebase/userOperations";
 import { useToast } from "@/hooks/use-toast";
 import { Trash2, ShoppingBag, RefreshCw } from "lucide-react";
 import { Product } from "@/types";
 import { useNavigate } from "react-router-dom";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 
 export default function WishlistSection() {
   const [wishlistItems, setWishlistItems] = useState<Product[]>([]);
@@ -27,20 +27,20 @@ export default function WishlistSection() {
       setLoading(true);
       console.log("Fetching wishlist for user:", auth.currentUser.uid);
       
-      // First get the user profile to get the wishlist IDs
-      const userProfile = await getUserProfile(auth.currentUser.uid);
-      console.log("User profile fetched:", userProfile);
+      // Get the user document directly to access the wishlist array
+      const userDocRef = doc(db, "users", auth.currentUser.uid);
+      const userDocSnap = await getDoc(userDocRef);
       
-      if (!userProfile || !userProfile.wishlist || userProfile.wishlist.length === 0) {
+      if (!userDocSnap.exists() || !userDocSnap.data().wishlist || userDocSnap.data().wishlist.length === 0) {
         console.log("No wishlist found or wishlist is empty");
         setWishlistItems([]);
         setLoading(false);
         return;
       }
       
-      // Directly query Firestore for products using the wishlist IDs
-      const productIds = userProfile.wishlist;
-      console.log("Fetching products with IDs:", productIds);
+      // Get the product IDs from the wishlist array
+      const productIds = userDocSnap.data().wishlist;
+      console.log("Found wishlist IDs:", productIds);
       
       if (productIds.length === 0) {
         setWishlistItems([]);
@@ -48,14 +48,28 @@ export default function WishlistSection() {
         return;
       }
       
-      const productsCollection = collection(db, "products");
-      const q = query(productsCollection, where("id", "in", productIds));
-      const querySnapshot = await getDocs(q);
+      // Fetch each product individually since we can have more than 10 items (limitation of 'in' query)
+      const products: Product[] = [];
       
-      const products: Product[] = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Product));
+      for (const productId of productIds) {
+        try {
+          const productDocRef = doc(db, "products", productId);
+          const productDocSnap = await getDoc(productDocRef);
+          
+          if (productDocSnap.exists()) {
+            const productData = {
+              id: productDocSnap.id,
+              ...productDocSnap.data()
+            } as Product;
+            
+            products.push(productData);
+          } else {
+            console.log(`Product ${productId} not found`);
+          }
+        } catch (error) {
+          console.error(`Error fetching product ${productId}:`, error);
+        }
+      }
       
       console.log("Products fetched:", products);
       setWishlistItems(products);
