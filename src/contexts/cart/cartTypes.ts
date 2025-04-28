@@ -10,10 +10,10 @@ export interface CartContextType {
   updateQuantity: (productId: string, variantId: string, quantity: number) => void;
   setShippingAddress: (address: Address) => void;
   setBillingAddress: (address: Address) => void;
-  placeOrder: (customer: Customer, paymentMethod: string) => Promise<string>; // Changed return type to Promise<string>
+  placeOrder: (customer: Customer, paymentMethod: string) => Promise<string | null>; 
   clearCart: () => void;
   itemCount: number;
   orders: Order[];
   returnRequests: ReturnRequest[];
-  requestReturn: (orderId: string, items: any[], reason: string) => ReturnRequest;
+  requestReturn: (orderId: string, items: any[], reason: string) => Promise<ReturnRequest>;
 }
