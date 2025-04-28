@@ -10,6 +10,7 @@ import { Lock, Mail } from "lucide-react";
 import { auth, db } from "@/integrations/firebase/client";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
+import { useAdmin } from "@/hooks/use-admin";
 
 const AdminLogin = () => {
   const { toast } = useToast();
@@ -18,19 +19,26 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const { setAdminStatus } = useAdmin();
 
   // Check if already authenticated as admin
   useEffect(() => {
+    console.log("AdminLogin: Checking auth status");
     const checkAdminStatus = async () => {
       const currentUser = auth.currentUser;
       if (currentUser && currentUser.email === "admin@test.com") {
         // Check if user is in admin collection
         try {
+          console.log("Checking if user is admin in Firestore:", currentUser.uid);
           const adminRef = doc(db, "admins", currentUser.uid);
           const adminSnap = await getDoc(adminRef);
           
           if (adminSnap.exists() && adminSnap.data().role === "admin") {
+            console.log("Admin confirmed in Firestore, redirecting to admin panel");
+            setAdminStatus(true);
             navigate("/admin");
+          } else {
+            console.log("User not found in admins collection");
           }
         } catch (error) {
           console.error("Error checking admin status:", error);
@@ -39,7 +47,7 @@ const AdminLogin = () => {
     };
     
     checkAdminStatus();
-  }, [navigate]);
+  }, [navigate, setAdminStatus]);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,6 +78,8 @@ const AdminLogin = () => {
         return;
       }
 
+      console.log("Attempting admin login with:", email);
+
       // First try to sign in
       try {
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -80,9 +90,20 @@ const AdminLogin = () => {
         // If account doesn't exist, create it
         if (loginError.code === "auth/user-not-found") {
           console.log("Admin account not found, creating...");
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          console.log("Admin account created successfully", userCredential.user.uid);
-          await setupAdminProfile(userCredential.user);
+          try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            console.log("Admin account created successfully", userCredential.user.uid);
+            await setupAdminProfile(userCredential.user);
+          } catch (createError: any) {
+            console.error("Error creating admin account:", createError);
+            toast({
+              title: "Account Creation Failed",
+              description: createError.message,
+              variant: "destructive",
+            });
+            setError(createError.message);
+            setIsLoading(false);
+          }
         } else if (loginError.code === "auth/wrong-password") {
           toast({
             title: "Incorrect Password",
@@ -116,6 +137,8 @@ const AdminLogin = () => {
 
   const setupAdminProfile = async (user: any) => {
     try {
+      console.log("Setting up admin profile for:", user.uid);
+      
       // Check if admin profile already exists
       const adminRef = doc(db, "admins", user.uid);
       const adminSnap = await getDoc(adminRef);
@@ -127,7 +150,11 @@ const AdminLogin = () => {
         createdAt: new Date()
       }, { merge: true });
       
+      console.log("Admin profile saved to Firestore");
       localStorage.setItem("userRole", "admin");
+      
+      // Important: Set admin status in the context
+      setAdminStatus(true);
       
       toast({
         title: "Welcome Administrator",
