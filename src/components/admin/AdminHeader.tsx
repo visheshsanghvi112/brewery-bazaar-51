@@ -2,14 +2,14 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { useAdmin as useAdminAuth } from "@/hooks/use-admin";
+import { useAdmin } from "@/hooks/use-admin";
 
 interface AdminHeaderProps {
   onLogout: () => void;
 }
 
 export function AdminHeader({ onLogout }: AdminHeaderProps) {
-  const { setAdminStatus } = useAdminAuth();
+  const { setAdminStatus } = useAdmin();
   
   const handleLogout = () => {
     setAdminStatus(false);

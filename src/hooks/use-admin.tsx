@@ -66,5 +66,15 @@ export function useAdmin() {
     return () => unsubscribe();
   }, []);
   
-  return { isAdmin, isLoading };
+  // Add the setAdminStatus function
+  const setAdminStatus = (status: boolean) => {
+    setIsAdmin(status);
+    if (status) {
+      localStorage.setItem('userRole', 'admin');
+    } else {
+      localStorage.removeItem('userRole');
+    }
+  };
+  
+  return { isAdmin, isLoading, setAdminStatus };
 }
