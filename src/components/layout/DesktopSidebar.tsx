@@ -2,13 +2,14 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ChevronRight, User, LogIn, UserPlus } from "lucide-react";
+import { auth } from "@/integrations/firebase/client";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarGroupContent,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
