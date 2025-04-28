@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { auth } from "@/integrations/firebase/client";
 import { getWishlist, removeFromWishlist } from "@/lib/firebase/userOperations";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, ShoppingBag } from "lucide-react";
+import { Trash2, ShoppingBag, RefreshCw } from "lucide-react";
 import { Product } from "@/types";
 import { useNavigate } from "react-router-dom";
 
@@ -16,12 +16,14 @@ export default function WishlistSection() {
   const navigate = useNavigate();
 
   const loadWishlist = async () => {
+    if (!auth.currentUser) return;
+    
     try {
       setLoading(true);
-      if (auth.currentUser) {
-        const items = await getWishlist(auth.currentUser.uid);
-        setWishlistItems(items);
-      }
+      console.log("Fetching wishlist for user:", auth.currentUser.uid);
+      const items = await getWishlist(auth.currentUser.uid);
+      console.log("Wishlist items fetched:", items);
+      setWishlistItems(items);
     } catch (error) {
       console.error("Error loading wishlist:", error);
       toast({
@@ -34,9 +36,18 @@ export default function WishlistSection() {
     }
   };
 
-  // Load wishlist when component mounts
+  // Load wishlist when component mounts and auth state changes
   useEffect(() => {
-    loadWishlist();
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        loadWishlist();
+      } else {
+        setWishlistItems([]);
+        setLoading(false);
+      }
+    });
+    
+    return () => unsubscribe();
   }, []);
 
   // Add focus listener to refresh wishlist when user returns to the page
@@ -87,6 +98,11 @@ export default function WishlistSection() {
             onClick={loadWishlist} 
             disabled={loading}
           >
+            {loading ? (
+              <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
             Refresh
           </Button>
         </CardTitle>
@@ -94,6 +110,7 @@ export default function WishlistSection() {
       <CardContent>
         {loading ? (
           <div className="flex items-center justify-center h-40">
+            <RefreshCw className="h-6 w-6 animate-spin mr-2" />
             <p>Loading wishlist...</p>
           </div>
         ) : wishlistItems.length > 0 ? (
