@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { auth } from "@/integrations/firebase/client";
 import { getWishlist, removeFromWishlist } from "@/lib/firebase/userOperations";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Trash2, ShoppingBag } from "lucide-react";
 import { Product } from "@/types";
 import { useNavigate } from "react-router-dom";
@@ -15,27 +15,42 @@ export default function WishlistSection() {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const loadWishlist = async () => {
-      try {
-        if (auth.currentUser) {
-          const items = await getWishlist(auth.currentUser.uid);
-          setWishlistItems(items);
-        }
-      } catch (error) {
-        console.error("Error loading wishlist:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load your wishlist",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
+  const loadWishlist = async () => {
+    try {
+      setLoading(true);
+      if (auth.currentUser) {
+        const items = await getWishlist(auth.currentUser.uid);
+        setWishlistItems(items);
       }
+    } catch (error) {
+      console.error("Error loading wishlist:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load your wishlist",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load wishlist when component mounts
+  useEffect(() => {
+    loadWishlist();
+  }, []);
+
+  // Add focus listener to refresh wishlist when user returns to the page
+  useEffect(() => {
+    const handleFocus = () => {
+      loadWishlist();
     };
 
-    loadWishlist();
-  }, [toast]);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   const handleRemoveItem = async (productId: string) => {
     try {
@@ -64,7 +79,17 @@ export default function WishlistSection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>My Wishlist</CardTitle>
+        <CardTitle className="flex justify-between items-center">
+          <span>My Wishlist</span>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={loadWishlist} 
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+        </CardTitle>
       </CardHeader>
       <CardContent>
         {loading ? (
