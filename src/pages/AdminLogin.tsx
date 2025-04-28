@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Lock, Mail } from "lucide-react";
 import { auth, db } from "@/integrations/firebase/client";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
@@ -14,21 +14,37 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 const AdminLogin = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState("admin@test.com");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
     
     try {
+      // Validate email is admin@test.com
       if (email !== "admin@test.com") {
         toast({
           title: "Access Denied",
           description: "This login is only for administrators.",
           variant: "destructive",
         });
+        setIsLoading(false);
+        return;
+      }
+
+      // Validate password length
+      if (password.length < 6) {
+        setError("Password must be at least 6 characters long");
+        toast({
+          title: "Invalid Password",
+          description: "Password must be at least 6 characters long",
+          variant: "destructive",
+        });
+        setIsLoading(false);
         return;
       }
 
@@ -38,7 +54,7 @@ const AdminLogin = () => {
           .then(async (userCredential) => {
             await setupAdminProfile(userCredential.user);
           })
-          .catch(async () => {
+          .catch(async (loginError) => {
             // If login fails, try creating the account
             console.log("Admin login failed, attempting to create admin account");
             await createUserWithEmailAndPassword(auth, email, password)
@@ -47,19 +63,22 @@ const AdminLogin = () => {
               })
               .catch((createError) => {
                 console.error("Error creating admin account:", createError);
+                setError(createError.message);
                 throw createError;
               });
           });
-      } catch (authError) {
+      } catch (authError: any) {
         console.error("Authentication error:", authError);
+        setError(authError.message);
         toast({
           title: "Authentication failed",
-          description: "Could not authenticate with admin credentials.",
+          description: authError.message || "Could not authenticate with admin credentials.",
           variant: "destructive",
         });
       }
     } catch (error: any) {
       console.error("Login process error:", error);
+      setError(error.message);
       toast({
         title: "Login failed",
         description: error.message,
@@ -118,8 +137,10 @@ const AdminLogin = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-9"
                   required
+                  readOnly
                 />
               </div>
+              <p className="text-xs text-muted-foreground">Email is fixed for admin access</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
@@ -128,14 +149,21 @@ const AdminLogin = () => {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-9"
                   required
+                  minLength={6}
                 />
               </div>
+              <p className="text-xs text-muted-foreground">Password must be at least 6 characters</p>
             </div>
+            {error && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            )}
             <Button
               type="submit"
               className="w-full bg-primary hover:bg-primary/90"
