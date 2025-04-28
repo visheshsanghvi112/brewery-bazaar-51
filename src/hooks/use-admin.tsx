@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { auth } from "@/integrations/firebase/client";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -10,6 +10,7 @@ interface UseAdminReturn {
   isAdmin: boolean;
   isLoading: boolean;
   setAdminStatus: (status: boolean) => void;
+  fetchAllOrders?: () => Promise<any[]>;
 }
 
 export function useAdmin(): UseAdminReturn {
@@ -124,5 +125,30 @@ export function useAdmin(): UseAdminReturn {
     }
   };
   
-  return { isAdmin, isLoading, setAdminStatus };
+  // Add a function to fetch all orders (only for admins)
+  const fetchAllOrders = async () => {
+    if (!isAdmin) {
+      console.error("Only admins can fetch all orders");
+      return [];
+    }
+    
+    try {
+      console.log("Admin is fetching all orders");
+      const ordersCollection = collection(db, "orders");
+      const orderSnapshot = await getDocs(ordersCollection);
+      
+      const allOrders = orderSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      
+      console.log(`Found ${allOrders.length} orders in the database`);
+      return allOrders;
+    } catch (error) {
+      console.error("Error fetching all orders:", error);
+      return [];
+    }
+  };
+  
+  return { isAdmin, isLoading, setAdminStatus, fetchAllOrders };
 }

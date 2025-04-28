@@ -18,6 +18,7 @@ import { getUserOrders, UserOrder } from "@/lib/firebase/userOperations";
 import AccountSettings from "@/components/profile/AccountSettings";
 import WishlistSection from "@/components/profile/WishlistSection";
 import UserReviewsSection from "@/components/profile/UserReviewsSection";
+import { useAdmin } from "@/hooks/use-admin";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -29,8 +30,11 @@ export default function Profile() {
   const [isAddingAddress, setIsAddingAddress] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
-  const { orders, returnRequests } = useCart();
+  const { orders: cartOrders, returnRequests } = useCart();
   const [firestoreOrders, setFirestoreOrders] = useState<UserOrder[]>([]);
+  const { isAdmin, fetchAllOrders } = useAdmin();
+  const [adminOrders, setAdminOrders] = useState<any[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   
   // Get active tab from URL query parameter or default to "profile"
   const tabParam = searchParams.get("tab");
@@ -48,6 +52,31 @@ export default function Profile() {
       setActiveTab(tabParam);
     }
   }, [tabParam]);
+
+  // Fetch all orders if the user is an admin
+  useEffect(() => {
+    const loadAdminOrders = async () => {
+      if (isAdmin && fetchAllOrders) {
+        setIsLoadingOrders(true);
+        try {
+          const allOrders = await fetchAllOrders();
+          console.log("Admin orders loaded:", allOrders.length);
+          setAdminOrders(allOrders);
+        } catch (error) {
+          console.error("Failed to fetch admin orders:", error);
+          toast({
+            title: "Error fetching orders",
+            description: "Could not load all orders. Please try again.",
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoadingOrders(false);
+        }
+      }
+    };
+    
+    loadAdminOrders();
+  }, [isAdmin, fetchAllOrders]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
@@ -176,9 +205,18 @@ export default function Profile() {
     return <div>Loading...</div>;
   }
 
-  const allOrders = [...orders, ...firestoreOrders.filter(fo => 
-    !orders.some(o => o.id === fo.id)
+  // Combine orders from different sources
+  const userOrders = [...cartOrders, ...firestoreOrders.filter(fo => 
+    !cartOrders.some(o => o.id === fo.id)
   )];
+  
+  // Display either admin orders (all orders) or just the user's orders
+  const allOrders = isAdmin ? [...adminOrders, ...userOrders] : userOrders;
+  
+  // Filter out duplicate orders
+  const uniqueOrders = allOrders.filter((order, index, self) =>
+    index === self.findIndex((o) => o.id === order.id)
+  );
   
   const userReturns = returnRequests.filter(returnReq => 
     allOrders.some(order => order.id === returnReq.orderId)
@@ -189,7 +227,7 @@ export default function Profile() {
       <div className="max-w-4xl mx-auto space-y-8">
         {/* Profile Header with Logout */}
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">My Account</h1>
+          <h1 className="text-3xl font-bold">My Account {isAdmin && "(Admin)"}</h1>
           <Button variant="outline" onClick={handleLogout}>
             <LogOut className="h-4 w-4 mr-2" />
             Logout
@@ -271,8 +309,15 @@ export default function Profile() {
         {/* Orders Section */}
         <Card>
           <CardHeader>
-            <CardTitle>Orders & Returns</CardTitle>
-            <CardDescription>View your order history and manage returns</CardDescription>
+            <CardTitle>
+              {isAdmin ? "All Orders" : "Orders & Returns"}
+              {isLoadingOrders && <span className="ml-2 text-sm text-muted-foreground">(Loading...)</span>}
+            </CardTitle>
+            <CardDescription>
+              {isAdmin 
+                ? "View and manage all customer orders in the system" 
+                : "View your order history and manage returns"}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -281,24 +326,32 @@ export default function Profile() {
                   <tr className="border-b">
                     <th className="text-left p-2">Order ID</th>
                     <th className="text-left p-2">Date</th>
+                    {isAdmin && <th className="text-left p-2">Customer</th>}
                     <th className="text-left p-2">Total</th>
                     <th className="text-left p-2">Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {allOrders.length > 0 ? (
-                    allOrders.map((order) => (
+                  {uniqueOrders.length > 0 ? (
+                    uniqueOrders.map((order) => (
                       <tr key={order.id} className="border-b">
                         <td className="p-2">#{order.id}</td>
-                        <td className="p-2">{new Date(order.date).toLocaleDateString()}</td>
-                        <td className="p-2">₹{(order.total / 100).toFixed(2)}</td>
+                        <td className="p-2">{new Date(order.date || order.createdAt || Date.now()).toLocaleDateString()}</td>
+                        {isAdmin && (
+                          <td className="p-2">
+                            {order.customer?.name || order.customerName || (
+                              order.userId === user.uid ? "You" : "Unknown User"
+                            )}
+                          </td>
+                        )}
+                        <td className="p-2">₹{((order.total || 0) / 100).toFixed(2)}</td>
                         <td className="p-2">{order.status}</td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={4} className="text-center p-4 text-muted-foreground">
-                        No orders found
+                      <td colSpan={isAdmin ? 5 : 4} className="text-center p-4 text-muted-foreground">
+                        {isLoadingOrders ? "Loading orders..." : "No orders found"}
                       </td>
                     </tr>
                   )}
