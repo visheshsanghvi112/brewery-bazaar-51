@@ -26,7 +26,7 @@ export default function Products() {
   // State for filters and filtered products
   const [filters, setFilters] = useState<FilterState>({
     category: categoryFromUrl,
-    price: [0, 10000],
+    price: [10, 10000],
     size: null,
     color: null,
   });
@@ -95,7 +95,7 @@ export default function Products() {
   const clearFilters = () => {
     setFilters({
       category: null,
-      price: [0, 10000],
+      price: [10, 10000],
       size: null,
       color: null,
     });

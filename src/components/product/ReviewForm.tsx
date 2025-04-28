@@ -4,6 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { Star } from "lucide-react";
+import { db } from "@/integrations/firebase/client";
+import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { auth } from "@/integrations/firebase/client";
+import { useAuthState } from "react-firebase-hooks/auth";
 
 interface ReviewFormProps {
   productId: string;
@@ -16,9 +20,19 @@ export default function ReviewForm({ productId, onReviewSubmitted }: ReviewFormP
   const [rating, setRating] = useState(0);
   const [tempRating, setTempRating] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [user] = useAuthState(auth);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to submit a review",
+        variant: "destructive",
+      });
+      return;
+    }
     
     if (rating === 0) {
       toast({
@@ -40,12 +54,16 @@ export default function ReviewForm({ productId, onReviewSubmitted }: ReviewFormP
     
     setLoading(true);
     
-    // Simulate review submission
-    setTimeout(() => {
-      setLoading(false);
-      toast({
-        title: "Review submitted",
-        description: "Thank you for your feedback!",
+    try {
+      // Add review to Firebase
+      await addDoc(collection(db, "reviews"), {
+        userId: user.uid,
+        author: user.displayName || user.email?.split('@')[0] || "Anonymous",
+        productId,
+        rating,
+        content: review,
+        createdAt: Timestamp.now(),
+        helpful: 0
       });
       
       // Reset form
@@ -54,7 +72,16 @@ export default function ReviewForm({ productId, onReviewSubmitted }: ReviewFormP
       
       // Notify parent component
       onReviewSubmitted();
-    }, 1000);
+    } catch (error) {
+      console.error("Error submitting review:", error);
+      toast({
+        title: "Error",
+        description: "There was an error submitting your review. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
   
   return (

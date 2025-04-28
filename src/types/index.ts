@@ -169,3 +169,15 @@ export interface ReturnAnalytics {
     count: number;
   }[];
 }
+
+// Review Types
+export interface Review {
+  id: string;
+  userId: string;
+  productId: string;
+  author: string;
+  rating: number;
+  content: string;
+  date: string;
+  helpful: number;
+}

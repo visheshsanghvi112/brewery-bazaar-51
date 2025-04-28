@@ -2,11 +2,15 @@
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import { db } from "@/integrations/firebase/client";
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from "firebase/firestore";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button"; 
 import ReviewForm from "./ReviewForm";
 import RatingSummary from "./RatingSummary";
 import ReviewsList from "./ReviewsList";
+import { auth } from "@/integrations/firebase/client";
+import { useAuthState } from "react-firebase-hooks/auth";
 
 interface ReviewsProps {
   productId: string;
@@ -24,40 +28,46 @@ interface Review {
 }
 
 export default function Reviews({ productId, rating, reviewCount }: ReviewsProps) {
-  // Mock reviews data - in a real app, this would be fetched from an API
-  const [reviews, setReviews] = useState<Review[]>([
-    {
-      id: "1",
-      author: "Raj Patel",
-      date: "2023-05-15",
-      rating: 5,
-      content: "This is exactly what I was looking for! The fit is perfect and the material is super comfortable. Wore it all day without any issues. Would definitely recommend!",
-      helpful: 12,
-    },
-    {
-      id: "2",
-      author: "Priya Sharma",
-      date: "2023-04-28",
-      rating: 4,
-      content: "Great t-shirt overall. The design is awesome and exactly as pictured. Took one star off because it runs slightly small - I'd recommend sizing up.",
-      helpful: 8,
-    },
-    {
-      id: "3",
-      author: "Aditya Mehta",
-      date: "2023-04-10",
-      rating: 5,
-      content: "Absolutely love this tee! The fabric is so soft and breathable, perfect for Mumbai weather. The color is exactly as shown online. Fast shipping too!",
-      helpful: 5,
-    },
-  ]);
-  
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [filteredReviews, setFilteredReviews] = useState<Review[]>(reviews);
   const [activeFilter, setActiveFilter] = useState<number | null>(null);
   const [helpfulMarked, setHelpfulMarked] = useState<Record<string, boolean>>({});
   const [activeTab, setActiveTab] = useState("reviews");
   const [canReview, setCanReview] = useState(false);
+  const [hasReviewed, setHasReviewed] = useState(false);
   const { toast } = useToast();
+  const [user] = useAuthState(auth);
+  
+  // Fetch reviews from Firebase
+  useEffect(() => {
+    const fetchReviews = async () => {
+      try {
+        const reviewsRef = collection(db, "reviews");
+        const q = query(reviewsRef, where("productId", "==", productId));
+        const querySnapshot = await getDocs(q);
+        
+        const fetchedReviews: Review[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          fetchedReviews.push({
+            id: doc.id,
+            author: data.author || "Anonymous",
+            date: data.createdAt ? new Date(data.createdAt.toDate()).toISOString() : new Date().toISOString(),
+            rating: data.rating || 0,
+            content: data.content || "",
+            helpful: data.helpful || 0,
+          });
+        });
+        
+        setReviews(fetchedReviews);
+        console.log("Fetched reviews:", fetchedReviews);
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+      }
+    };
+    
+    fetchReviews();
+  }, [productId]);
   
   // Update filtered reviews when reviews change or filter changes
   useEffect(() => {
@@ -71,48 +81,93 @@ export default function Reviews({ productId, rating, reviewCount }: ReviewsProps
   // Check if the user has purchased this product and if their order is delivered
   useEffect(() => {
     const checkPurchaseStatus = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
+      if (!user) {
         setCanReview(false);
         return;
       }
       
       try {
-        // Check if user has ordered this product and the order is delivered
-        const { data, error } = await supabase
-          .from('orders')
-          .select(`
-            id, 
-            status,
-            order_items!inner(product_id)
-          `)
-          .eq('user_id', session.user.id)
-          .eq('order_items.product_id', productId)
-          .eq('status', 'Delivered');
+        // Check if user has ordered this product
+        const ordersRef = collection(db, "orders");
+        const q = query(ordersRef, where("userId", "==", user.uid));
+        const querySnapshot = await getDocs(q);
+        
+        let hasPurchased = false;
+        
+        if (!querySnapshot.empty) {
+          for (const doc of querySnapshot.docs) {
+            const orderData = doc.data();
+            
+            if (orderData.status === "Delivered") {
+              // Check if this product is in the order items
+              const orderItemsRef = collection(db, "order_items");
+              const itemsQuery = query(orderItemsRef, 
+                where("orderId", "==", doc.id),
+                where("productId", "==", productId)
+              );
+              
+              const itemsSnapshot = await getDocs(itemsQuery);
+              
+              if (!itemsSnapshot.empty) {
+                hasPurchased = true;
+                break;
+              }
+            }
+          }
+        }
+        
+        setCanReview(hasPurchased);
+        
+        // Check if user has already reviewed this product
+        if (user) {
+          const reviewsRef = collection(db, "reviews");
+          const reviewQuery = query(
+            reviewsRef,
+            where("userId", "==", user.uid),
+            where("productId", "==", productId)
+          );
           
-        if (error) {
-          console.error('Error checking purchase status:', error);
-          return;
+          const reviewSnapshot = await getDocs(reviewQuery);
+          setHasReviewed(!reviewSnapshot.empty);
         }
         
-        // If we have a result, the user has purchased this product and it's delivered
-        setCanReview(data && data.length > 0);
-        
-        if (data && data.length > 0) {
-          console.log('User has purchased this product with a completed order');
-        }
       } catch (error) {
         console.error('Error checking purchase status:', error);
       }
     };
     
     checkPurchaseStatus();
-  }, [productId]);
+  }, [productId, user]);
   
   const handleNewReview = () => {
-    // In a real app, we would refresh the reviews from the server
-    console.log("New review submitted");
+    // Refresh the reviews list
+    const fetchReviews = async () => {
+      try {
+        const reviewsRef = collection(db, "reviews");
+        const q = query(reviewsRef, where("productId", "==", productId));
+        const querySnapshot = await getDocs(q);
+        
+        const fetchedReviews: Review[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          fetchedReviews.push({
+            id: doc.id,
+            author: data.author || "Anonymous",
+            date: data.createdAt ? new Date(data.createdAt.toDate()).toISOString() : new Date().toISOString(),
+            rating: data.rating || 0,
+            content: data.content || "",
+            helpful: data.helpful || 0,
+          });
+        });
+        
+        setReviews(fetchedReviews);
+        setHasReviewed(true);
+      } catch (error) {
+        console.error("Error fetching reviews:", error);
+      }
+    };
+    
+    fetchReviews();
     setActiveTab("reviews");
     
     toast({
@@ -121,23 +176,40 @@ export default function Reviews({ productId, rating, reviewCount }: ReviewsProps
     });
   };
   
-  const markHelpful = (reviewId: string) => {
+  const markHelpful = async (reviewId: string) => {
     if (helpfulMarked[reviewId]) return;
     
-    setReviews(reviews.map(review => 
-      review.id === reviewId ? { ...review, helpful: review.helpful + 1 } : review
-    ));
-    
-    setHelpfulMarked({
-      ...helpfulMarked,
-      [reviewId]: true,
-    });
+    try {
+      // Update the review in Firebase
+      const reviewsRef = collection(db, "reviews");
+      const q = query(reviewsRef, where("id", "==", reviewId));
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        const reviewDoc = querySnapshot.docs[0];
+        const reviewData = reviewDoc.data();
+        
+        // Update the review locally
+        setReviews(reviews.map(review => 
+          review.id === reviewId ? { ...review, helpful: review.helpful + 1 } : review
+        ));
+        
+        setHelpfulMarked({
+          ...helpfulMarked,
+          [reviewId]: true,
+        });
+      }
+    } catch (error) {
+      console.error("Error marking review as helpful:", error);
+    }
   };
   
   // Calculate rating distribution
   const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
   reviews.forEach(review => {
-    ratingCounts[review.rating as keyof typeof ratingCounts]++;
+    if (review.rating >= 1 && review.rating <= 5) {
+      ratingCounts[review.rating as keyof typeof ratingCounts]++;
+    }
   });
 
   const handleFilterByRating = (rating: number | null) => {
@@ -151,7 +223,7 @@ export default function Reviews({ productId, rating, reviewCount }: ReviewsProps
       <Tabs defaultValue="reviews" value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="mb-8">
           <TabsTrigger value="reviews">Reviews ({reviews.length})</TabsTrigger>
-          {canReview && (
+          {canReview && !hasReviewed && (
             <TabsTrigger value="write-review">Write a Review</TabsTrigger>
           )}
         </TabsList>
@@ -160,10 +232,12 @@ export default function Reviews({ productId, rating, reviewCount }: ReviewsProps
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             {/* Rating Summary */}
             <RatingSummary 
-              rating={rating}
+              rating={reviews.length > 0 
+                ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+                : rating}
               reviewCount={reviews.length}
               ratingCounts={ratingCounts}
-              canReview={canReview}
+              canReview={canReview && !hasReviewed}
               onWriteReviewClick={() => setActiveTab("write-review")}
             />
             
@@ -195,7 +269,7 @@ export default function Reviews({ productId, rating, reviewCount }: ReviewsProps
                 reviews={filteredReviews}
                 helpfulMarked={helpfulMarked}
                 onMarkHelpful={markHelpful}
-                canReview={canReview}
+                canReview={canReview && !hasReviewed}
                 onWriteReviewClick={() => setActiveTab("write-review")}
               />
             </div>

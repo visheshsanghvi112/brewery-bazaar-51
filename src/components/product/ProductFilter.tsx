@@ -17,7 +17,17 @@ const colors = [
   { name: "White", code: "#FFFFFF" },
   { name: "Navy", code: "#000080" },
   { name: "Gray", code: "#808080" },
-  { name: "Red", code: "#FF0000" }
+  { name: "Red", code: "#FF0000" },
+  { name: "Blue", code: "#0000FF" },
+  { name: "Green", code: "#008000" },
+  { name: "Yellow", code: "#FFFF00" },
+  { name: "Purple", code: "#800080" },
+  { name: "Pink", code: "#FFC0CB" },
+  { name: "Orange", code: "#FFA500" },
+  { name: "Brown", code: "#A52A2A" },
+  { name: "Turquoise", code: "#40E0D0" },
+  { name: "Gold", code: "#FFD700" },
+  { name: "Silver", code: "#C0C0C0" }
 ];
 
 interface ProductFilterProps {
@@ -73,7 +83,7 @@ export default function ProductFilter({
             )}
           </Button>
           
-          {(filters.category || filters.size || filters.color || filters.price[0] > 0 || filters.price[1] < 10000) && (
+          {(filters.category || filters.size || filters.color || filters.price[0] > 10 || filters.price[1] < 10000) && (
             <Button 
               variant="ghost" 
               onClick={onClearFilters}
@@ -95,7 +105,7 @@ export default function ProductFilter({
       >
         <div className="hidden lg:flex justify-between items-center mb-4">
           <h2 className="font-medium">Filters</h2>
-          {(filters.category || filters.size || filters.color || filters.price[0] > 0 || filters.price[1] < 10000) && (
+          {(filters.category || filters.size || filters.color || filters.price[0] > 10 || filters.price[1] < 10000) && (
             <Button 
               variant="ghost" 
               onClick={onClearFilters}
@@ -143,7 +153,8 @@ export default function ProductFilter({
           <h3 className="font-medium mb-3 text-foreground/90">Price Range</h3>
           <div className="px-2">
             <Slider
-              defaultValue={[0, 10000]}
+              defaultValue={[10, 10000]}
+              min={10}
               max={10000}
               step={100}
               value={filters.price}
@@ -151,8 +162,8 @@ export default function ProductFilter({
               className="my-6"
             />
             <div className="flex justify-between text-sm text-muted-foreground">
-              <span>₹{(filters.price[0] / 100).toFixed(2)}</span>
-              <span>₹{(filters.price[1] / 100).toFixed(2)}</span>
+              <span>₹{(filters.price[0]).toFixed(0)}</span>
+              <span>₹{(filters.price[1]).toFixed(0)}</span>
             </div>
           </div>
         </div>
