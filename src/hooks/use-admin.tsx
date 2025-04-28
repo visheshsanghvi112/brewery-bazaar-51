@@ -24,38 +24,22 @@ export function useAdmin() {
         return;
       }
       
-      // Check if the user's email is admin@test.com
-      if (currentUser.email === "admin@test.com") {
-        setIsAdmin(true);
-        localStorage.setItem('userRole', 'admin');
-        return;
-      }
-      
-      // Check Firestore for admin role
+      // Only check admins collection
       try {
-        const userRef = doc(db, "users", currentUser.uid);
-        const userSnap = await getDoc(userRef);
+        const adminRef = doc(db, "admins", currentUser.uid);
+        const adminSnap = await getDoc(adminRef);
         
-        if (userSnap.exists() && userSnap.data().role === "admin") {
+        if (adminSnap.exists() && adminSnap.data().role === "admin") {
           setIsAdmin(true);
           localStorage.setItem('userRole', 'admin');
           return;
         }
       } catch (error) {
-        console.error("Error checking admin status in Firestore:", error);
+        console.error("Error checking admin status:", error);
       }
       
-      // Fallback to localStorage check
-      const userRole = localStorage.getItem('userRole');
-      const isUserAdmin = userRole === 'admin';
-      
-      console.log("Checking admin status:", { 
-        currentUser: currentUser.email,
-        userRole,
-        isAdmin: isUserAdmin
-      });
-      
-      setIsAdmin(isUserAdmin);
+      setIsAdmin(false);
+      localStorage.removeItem('userRole');
     };
     
     // Check immediately

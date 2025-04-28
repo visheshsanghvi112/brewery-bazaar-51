@@ -17,7 +17,7 @@ export default function Admin() {
   const { toast } = useToast();
   const { isAdmin } = useAdmin();
   
-  // Redirect non-admin users to login
+  // Redirect non-admin users to admin login
   useEffect(() => {
     if (!isAdmin) {
       toast({
@@ -25,7 +25,7 @@ export default function Admin() {
         description: "Please login with an admin account to access this page.",
         variant: "destructive",
       });
-      navigate("/login");
+      navigate("/admin-login");
     }
   }, [isAdmin, navigate, toast]);
 

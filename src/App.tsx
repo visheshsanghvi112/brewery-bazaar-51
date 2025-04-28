@@ -20,6 +20,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { CartProvider } from "@/contexts/CartContext";
 import { PageLoader } from "@/components/ui/page-loader";
+import AdminLogin from "@/pages/AdminLogin";
 
 // Support pages
 import SupportHome from "@/pages/support/SupportHome";
@@ -72,6 +73,7 @@ function App() {
           <Suspense fallback={<PageLoader />}>
             <Routes>
               <Route path="/" element={<Index />} />
+              <Route path="/admin-login" element={<AdminLogin />} />
               <Route path="/admin/*" element={<Admin />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/contact" element={<Contact />} />
