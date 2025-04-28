@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,7 @@ import { useCart } from "@/contexts/CartContext";
 import { StatusBadge } from "@/components/admin/StatusBadge";
 import { getUserProfile, updateUserProfile, UserProfile, UserAddress } from "@/lib/firebase/userOperations";
 import { AddressForm } from "@/components/profile/AddressForm";
+import { getUserOrders, UserOrder } from "@/lib/firebase/userOperations";
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -26,6 +26,7 @@ export default function Profile() {
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
   const { orders, returnRequests } = useCart();
+  const [firestoreOrders, setFirestoreOrders] = useState<UserOrder[]>([]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
@@ -40,8 +41,12 @@ export default function Profile() {
             setUserProfile(profile);
             setPhone(profile.phone || "");
           }
+          
+          // Fetch user orders from Firestore
+          const orders = await getUserOrders(currentUser.uid);
+          setFirestoreOrders(orders);
         } catch (error) {
-          console.error("Error fetching user profile:", error);
+          console.error("Error fetching user data:", error);
         }
       } else {
         navigate("/login");
@@ -143,10 +148,11 @@ export default function Profile() {
     return <div>Loading...</div>;
   }
 
-  // Filter orders and returns for the current user
-  const userOrders = orders.filter(order => order.customer.email === user.email);
-  const userReturns = returnRequests.filter(request => request.customerEmail === user.email);
-
+  // Filter orders to show both local and Firestore orders
+  const allOrders = [...orders, ...firestoreOrders.filter(fo => 
+    !orders.some(o => o.id === fo.id)
+  )];
+  
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -304,8 +310,8 @@ export default function Profile() {
                         </tr>
                       </thead>
                       <tbody>
-                        {userOrders.length > 0 ? (
-                          userOrders.map((order) => (
+                        {allOrders.length > 0 ? (
+                          allOrders.map((order) => (
                             <tr key={order.id} className="border-b">
                               <td className="p-3">#{order.id}</td>
                               <td className="p-3">{new Date(order.date).toLocaleDateString()}</td>

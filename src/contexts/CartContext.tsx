@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer } from 'react';
 import { Product, ProductVariant, Cart, Order, Address, Customer, OrderStatus, ReturnRequest, ReturnStatus } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
@@ -12,6 +11,7 @@ import {
 } from './cart/cartReducer';
 import { CartContextType } from './cart/cartTypes';
 import { createOrder, updateCustomer } from './cart/orderManager';
+import { saveOrder } from '@/lib/firebase/userOperations';
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
@@ -68,27 +68,42 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'SET_BILLING_ADDRESS', payload: address });
   };
   
-  const placeOrder = (customer: Customer, paymentMethod: string) => {
-    // Create the order
-    const { newOrder, orderId } = createOrder(state, customer, paymentMethod, orders);
-    
-    // Add to orders in localStorage
-    setOrders([...orders, newOrder]);
-    
-    // Update customer information
-    const updatedCustomers = updateCustomer(customer, customers, newOrder.total);
-    setCustomers(updatedCustomers);
-    
-    // Clear cart
-    clearCart();
-    
-    // Show success message
-    toast({
-      title: 'Order placed successfully',
-      description: `Your order #${orderId} has been placed and is being processed.`,
-    });
-    
-    return orderId;
+  const placeOrder = async (customer: Customer, paymentMethod: string) => {
+    try {
+      // Create the order
+      const { newOrder, orderId } = createOrder(state, customer, paymentMethod, orders);
+      
+      // Save to Firestore if user is authenticated
+      if (auth.currentUser) {
+        await saveOrder(auth.currentUser.uid, newOrder);
+      }
+      
+      // Add to orders in localStorage
+      setOrders([...orders, newOrder]);
+      
+      // Update customer information
+      const updatedCustomers = updateCustomer(customer, customers, newOrder.total);
+      setCustomers(updatedCustomers);
+      
+      // Clear cart
+      clearCart();
+      
+      // Show success message
+      toast({
+        title: 'Order placed successfully',
+        description: `Your order #${orderId} has been placed and is being processed.`,
+      });
+      
+      return orderId;
+    } catch (error) {
+      console.error("Error placing order:", error);
+      toast({
+        title: 'Order placement failed',
+        description: 'There was an error placing your order. Please try again.',
+        variant: 'destructive',
+      });
+      throw error;
+    }
   };
 
   const requestReturn = (orderId: string, items: any[], reason: string) => {
