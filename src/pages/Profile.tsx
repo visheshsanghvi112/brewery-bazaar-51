@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ import UserReviewsSection from "@/components/profile/UserReviewsSection";
 
 export default function Profile() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
   const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -31,7 +32,23 @@ export default function Profile() {
   const [phone, setPhone] = useState("");
   const { orders, returnRequests } = useCart();
   const [firestoreOrders, setFirestoreOrders] = useState<UserOrder[]>([]);
-  const [activeTab, setActiveTab] = useState("profile");
+  
+  // Get active tab from URL query parameter or default to "profile"
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState(tabParam || "profile");
+
+  // Update URL when tab changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setSearchParams({ tab: value });
+  };
+
+  useEffect(() => {
+    // Update active tab when URL param changes
+    if (tabParam && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam]);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (currentUser) => {
@@ -171,7 +188,7 @@ export default function Profile() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        <Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab}>
+        <Tabs value={activeTab} onValueChange={handleTabChange}>
           <div className="flex flex-col sm:flex-row items-start justify-between mb-8">
             <TabsList className="mb-4 sm:mb-0">
               <TabsTrigger value="profile">Profile</TabsTrigger>

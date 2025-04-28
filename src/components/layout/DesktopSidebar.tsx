@@ -37,6 +37,14 @@ const authNavItems: NavItem[] = [
   { path: "/profile", label: "My Account", icon: User },
 ];
 
+const userNavItems: NavItem[] = [
+  { path: "/profile", label: "My Profile", icon: User },
+  { path: "/orders", label: "My Orders" },
+  { path: "/profile?tab=wishlist", label: "My Wishlist" },
+  { path: "/profile?tab=reviews", label: "My Reviews" },
+  { path: "/profile?tab=settings", label: "Account Settings" },
+];
+
 const supportNavItems: NavItem[] = [
   { path: "/support", label: "Support Home" },
   { path: "/support/faqs", label: "FAQs" },
@@ -66,7 +74,9 @@ function SidebarMenuGroup({ title, items }: SidebarMenuGroupProps) {
       <SidebarGroupContent>
         <SidebarMenu>
           {items.map((item) => {
-            const isActive = location.pathname === item.path;
+            const basePath = item.path.split('?')[0];
+            // Check if current location matches this item's path (ignoring query params)
+            const isActive = location.pathname === basePath;
             const Icon = item.icon;
             
             return (
@@ -98,12 +108,18 @@ function SidebarMenuGroup({ title, items }: SidebarMenuGroupProps) {
 }
 
 export function DesktopSidebarContent() {
+  const isAuthenticated = !!auth?.currentUser;
+  
   return (
     <Sidebar side="right">
       <SidebarRail />
       <SidebarContent>
         <SidebarMenuGroup title="Main Navigation" items={mainNavItems} />
-        <SidebarMenuGroup title="Account" items={authNavItems} />
+        {isAuthenticated ? (
+          <SidebarMenuGroup title="My Account" items={userNavItems} />
+        ) : (
+          <SidebarMenuGroup title="Account" items={authNavItems} />
+        )}
         <SidebarMenuGroup title="Support" items={supportNavItems} />
         <SidebarMenuGroup title="Company" items={additionalNavItems} />
       </SidebarContent>

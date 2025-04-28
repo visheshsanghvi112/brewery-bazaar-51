@@ -1,3 +1,4 @@
+
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
@@ -175,23 +176,28 @@ export default function Navbar() {
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/profile" className="cursor-pointer">
+                  <Link to="/profile" className="cursor-pointer w-full">
                     Profile
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/orders" className="cursor-pointer">
+                  <Link to="/orders" className="cursor-pointer w-full">
                     My Orders
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/returns" className="cursor-pointer">
+                  <Link to="/profile?tab=wishlist" className="cursor-pointer w-full">
+                    Wishlist
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/returns" className="cursor-pointer w-full">
                     Returns & Exchanges
                   </Link>
                 </DropdownMenuItem>
                 {userRole === "admin" && (
                   <DropdownMenuItem asChild>
-                    <Link to="/admin" className="cursor-pointer">
+                    <Link to="/admin" className="cursor-pointer w-full">
                       Admin Dashboard
                     </Link>
                   </DropdownMenuItem>
