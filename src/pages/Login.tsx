@@ -9,8 +9,9 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useAdmin } from "@/hooks/use-admin";
 import { auth, googleProvider } from "@/integrations/firebase/client";
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "firebase/auth";
+import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, createUserWithEmailAndPassword } from "firebase/auth";
 import { Separator } from "@/components/ui/separator";
+import { doc, setDoc } from "firebase/firestore";
 
 const Login = () => {
   const { toast } = useToast();
@@ -76,23 +77,53 @@ const Login = () => {
     console.log("Login attempt:", { email: trimmedEmail });
     
     try {
-      if (trimmedEmail === "admin@test.com" && trimmedPassword === "admin") {
+      if (trimmedEmail === "admin@test.com") {
         console.log("Admin credentials detected");
-        localStorage.setItem("userRole", "admin");
-        localStorage.setItem("userName", "Admin");
-        localStorage.setItem("userEmail", trimmedEmail);
         
+        // Try to create admin account if it doesn't exist
+        try {
+          await createUserWithEmailAndPassword(auth, trimmedEmail, trimmedPassword)
+            .then(async (userCredential) => {
+              const user = userCredential.user;
+              
+              // Set up admin profile in Firestore
+              await setDoc(doc(db, "users", user.uid), {
+                email: trimmedEmail,
+                name: "Admin",
+                role: "admin",
+                createdAt: new Date()
+              });
+              
+              console.log("Admin account created successfully");
+            })
+            .catch((error) => {
+              // If account already exists, this is fine - we'll try to sign in
+              console.log("Admin account may already exist:", error.code);
+            });
+        } catch (createError) {
+          console.log("Error creating admin:", createError);
+          // Ignore creation errors - we'll try to sign in anyway
+        }
+        
+        // Now try to sign in
         await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword)
+          .then((userCredential) => {
+            const user = userCredential.user;
+            
+            localStorage.setItem("userRole", "admin");
+            localStorage.setItem("userName", "Admin");
+            localStorage.setItem("userEmail", trimmedEmail);
+            
+            toast({
+              title: "Welcome back, Admin!",
+              description: "You have successfully logged in to your account.",
+            });
+            
+            navigate("/admin");
+          })
           .catch((error) => {
-            console.log("Admin user may not exist in Firebase yet:", error.code);
+            throw error;
           });
-        
-        toast({
-          title: "Welcome back, Admin!",
-          description: "You have successfully logged in to your account.",
-        });
-        
-        navigate("/admin");
       } 
       else if (trimmedEmail && trimmedPassword) {
         const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
