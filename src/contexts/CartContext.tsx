@@ -13,7 +13,7 @@ import {
 import { CartContextType } from './cart/cartTypes';
 import { createOrder, updateCustomer } from './cart/orderManager';
 import { saveOrder } from '@/lib/firebase/userOperations';
-import { auth } from '@/integrations/firebase/client'; // Add auth import
+import { auth } from '@/integrations/firebase/client';
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
@@ -72,13 +72,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const placeOrder = async (customer: Customer, paymentMethod: string) => {
     try {
+      // Check if user is authenticated
+      if (!auth.currentUser) {
+        toast({
+          title: 'Authentication required',
+          description: 'Please login to place an order',
+          variant: 'destructive',
+        });
+        return null;
+      }
+      
       // Create the order
       const { newOrder, orderId } = createOrder(state, customer, paymentMethod, orders);
       
       // Save to Firestore if user is authenticated
-      if (auth.currentUser) {
-        await saveOrder(auth.currentUser.uid, newOrder);
-      }
+      await saveOrder(auth.currentUser.uid, newOrder);
       
       // Add to orders in localStorage
       setOrders([...orders, newOrder]);

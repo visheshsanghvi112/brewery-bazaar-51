@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Trash2, ArrowLeft, ShoppingCart, Minus, Plus, Check } from "lucide-react";
@@ -18,6 +18,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import CheckoutLayout from "@/components/checkout/CheckoutLayout";
 import { AddressAutocomplete } from "@/components/checkout/AddressAutocomplete";
+import { auth } from "@/integrations/firebase/client";
+import { LoginDialog } from "@/components/auth/LoginDialog";
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -36,6 +38,7 @@ export default function CartPage() {
   const [step, setStep] = useState<"cart" | "shipping" | "payment">("cart");
   const [useShippingAsBilling, setUseShippingAsBilling] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState("razorpay");
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
   
   const [shippingInfo, setShippingInfo] = useState<Address>(
     shippingAddress || {
@@ -67,6 +70,13 @@ export default function CartPage() {
   const [shippingSearchValue, setShippingSearchValue] = useState("");
   const [billingSearchValue, setBillingSearchValue] = useState("");
   
+  useEffect(() => {
+    if (step !== "cart" && !auth.currentUser) {
+      setShowLoginDialog(true);
+      setStep("cart");
+    }
+  }, [step]);
+  
   const formatPrice = (price: number) => {
     return `₹${(price / 100).toFixed(2)}`;
   };
@@ -92,8 +102,21 @@ export default function CartPage() {
     setCustomerInfo({ ...customerInfo, [field]: value });
   };
   
+  const handleProceedToCheckout = () => {
+    if (!auth.currentUser) {
+      setShowLoginDialog(true);
+      return;
+    }
+    setStep("shipping");
+  };
+  
   const handleShippingSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!auth.currentUser) {
+      setShowLoginDialog(true);
+      return;
+    }
     
     if (!shippingInfo.street || !shippingInfo.city || !shippingInfo.state || !shippingInfo.zipCode) {
       toast({
@@ -116,6 +139,11 @@ export default function CartPage() {
   const handlePaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!auth.currentUser) {
+      setShowLoginDialog(true);
+      return;
+    }
+    
     if (!customerInfo.name || !customerInfo.email || !customerInfo.phone) {
       toast({
         title: "Missing information",
@@ -130,12 +158,14 @@ export default function CartPage() {
     
     const orderId = placeOrder(customerInfo, paymentMethod);
     
-    navigate("/");
-    
-    toast({
-      title: "Order placed successfully",
-      description: `Thank you for your order #${orderId}! We'll process it right away.`,
-    });
+    if (orderId) {
+      navigate("/");
+      
+      toast({
+        title: "Order placed successfully",
+        description: `Thank you for your order #${orderId}! We'll process it right away.`,
+      });
+    }
   };
   
   const subtotal = cart.total;
@@ -321,7 +351,7 @@ export default function CartPage() {
               <Button
                 className="w-full bg-primary hover:bg-primary/90"
                 size="lg"
-                onClick={() => setStep("shipping")}
+                onClick={handleProceedToCheckout}
               >
                 Proceed to Checkout
               </Button>
@@ -333,6 +363,11 @@ export default function CartPage() {
             </div>
           </motion.div>
         </div>
+
+        <LoginDialog 
+          isOpen={showLoginDialog}
+          onClose={() => setShowLoginDialog(false)}
+        />
       </CheckoutLayout>
     );
   }
