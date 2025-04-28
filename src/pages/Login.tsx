@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { useAdmin } from "@/hooks/use-admin";
-import { auth, googleProvider } from "@/integrations/firebase/client";
+import { auth, googleProvider, db } from "@/integrations/firebase/client";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, createUserWithEmailAndPassword } from "firebase/auth";
 import { Separator } from "@/components/ui/separator";
 import { doc, setDoc } from "firebase/firestore";
