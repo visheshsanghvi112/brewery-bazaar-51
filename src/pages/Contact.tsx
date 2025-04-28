@@ -1,11 +1,12 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { Mail, Phone, MapPin, Send } from "lucide-react";
-import { addDoc, collection } from "firebase/firestore";
+import { Mail, Phone, MapPin, Send, AlertTriangle } from "lucide-react";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
 
 export default function Contact() {
@@ -15,19 +16,27 @@ export default function Contact() {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setFormError(null);
     
     try {
+      // Make sure we have all required fields
+      if (!name || !email || !subject || !message) {
+        throw new Error("Please fill out all fields");
+      }
+      
       // Add submission to Firestore
-      await addDoc(collection(db, "contact_submissions"), {
+      const contactRef = collection(db, "contact_submissions");
+      await addDoc(contactRef, {
         name,
         email,
         subject,
         message,
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
       });
       
       toast({
@@ -42,11 +51,23 @@ export default function Contact() {
       setMessage("");
     } catch (error) {
       console.error("Error submitting contact form:", error);
-      toast({
-        title: "Error",
-        description: "There was an error sending your message. Please try again.",
-        variant: "destructive",
-      });
+      
+      // Handle specific errors
+      if ((error as any)?.code === "permission-denied") {
+        setFormError("Permission denied when saving your message. Our team has been notified.");
+        toast({
+          title: "Permissions Error",
+          description: "Your message couldn't be saved due to a permissions issue. We'll fix this soon!",
+          variant: "destructive",
+        });
+      } else {
+        setFormError((error as Error).message || "There was an error sending your message. Please try again.");
+        toast({
+          title: "Error",
+          description: "There was an error sending your message. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -104,10 +125,17 @@ export default function Contact() {
                 allowFullScreen 
                 loading="lazy"
                 className="rounded-lg"
+                title="Google Maps - Fashion Street"
               ></iframe>
             </div>
             <div>
               <h2 className="text-2xl font-bold mb-6">Send Us a Message</h2>
+              {formError && (
+                <div className="bg-destructive/15 p-4 rounded-md mb-6 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-destructive" />
+                  <p className="text-sm text-destructive">{formError}</p>
+                </div>
+              )}
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
