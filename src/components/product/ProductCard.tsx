@@ -1,9 +1,14 @@
+
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Product } from "@/types";
-import { Sparkles, Star } from "lucide-react";
+import { Sparkles, Star, Heart } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { auth } from "@/integrations/firebase/client";
+import { addToWishlist, removeFromWishlist, getWishlist } from "@/lib/firebase/userOperations";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProductCardProps {
   product: Product;
@@ -11,6 +16,65 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, isMobile }: ProductCardProps) {
+  const [isInWishlist, setIsInWishlist] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const checkWishlist = async () => {
+      if (auth.currentUser) {
+        try {
+          const wishlist = await getWishlist(auth.currentUser.uid);
+          setIsInWishlist(wishlist.some(item => item.id === product.id));
+        } catch (error) {
+          console.error("Error checking wishlist:", error);
+        }
+      }
+    };
+
+    checkWishlist();
+  }, [product.id]);
+
+  const handleWishlistToggle = async (e: React.MouseEvent) => {
+    e.preventDefault(); // Stop event from bubbling up to Link
+    
+    if (!auth.currentUser) {
+      toast({
+        title: "Please login",
+        description: "You need to be logged in to add items to your wishlist",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      if (isInWishlist) {
+        await removeFromWishlist(auth.currentUser.uid, product.id);
+        setIsInWishlist(false);
+        toast({
+          title: "Removed from wishlist",
+          description: `${product.name} has been removed from your wishlist`,
+        });
+      } else {
+        await addToWishlist(auth.currentUser.uid, product.id);
+        setIsInWishlist(true);
+        toast({
+          title: "Added to wishlist",
+          description: `${product.name} has been added to your wishlist`,
+        });
+      }
+    } catch (error) {
+      console.error("Error updating wishlist:", error);
+      toast({
+        title: "Error",
+        description: "There was an error updating your wishlist",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Link to={`/products/${product.id}`}>
       <Card className="group overflow-hidden border-none rounded-md shadow-md hover:shadow-xl transition-all duration-300">
@@ -25,8 +89,19 @@ export default function ProductCard({ product, isMobile }: ProductCardProps) {
               Sale
             </div>
           )}
+          <Button
+            variant="outline"
+            size="icon"
+            className={`absolute top-2 right-2 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white 
+              ${isInWishlist ? 'text-red-500 hover:text-red-600' : 'text-gray-600 hover:text-gray-700'}
+              ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+            onClick={handleWishlistToggle}
+            disabled={loading}
+          >
+            <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-current' : ''}`} />
+          </Button>
           {product.featured && (
-            <div className="absolute top-2 right-2 bg-primary/90 text-primary-foreground text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1">
+            <div className="absolute bottom-2 left-2 bg-primary/90 text-primary-foreground text-xs font-medium px-2 py-1 rounded-full flex items-center gap-1">
               <Sparkles className="h-3 w-3" />
               Featured
             </div>
