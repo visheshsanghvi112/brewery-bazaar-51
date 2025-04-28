@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
@@ -59,7 +58,7 @@ export default function Returns() {
     }
   };
 
-  const handleSubmitReturn = () => {
+  const handleSubmitReturn = async () => {
     if (!selectedOrder) {
       toast({
         title: "Error",
@@ -81,14 +80,23 @@ export default function Returns() {
     // Combine reason and additional comments
     const fullReason = `${getReasonText(returnReason)}${additionalComments ? ': ' + additionalComments : ''}`;
     
-    // Request the return
-    const return_request = requestReturn(selectedOrder, selectedItems, fullReason);
-    
-    if (return_request && return_request.id) {
-      setSelectedOrder(null);
-      setSelectedItems([]);
-      setReturnReason("wrong_size");
-      setAdditionalComments("");
+    try {
+      // Request the return and await the promise
+      const returnData = await requestReturn(selectedOrder, selectedItems, fullReason);
+      
+      if (returnData && returnData.id) {
+        setSelectedOrder(null);
+        setSelectedItems([]);
+        setReturnReason("wrong_size");
+        setAdditionalComments("");
+      }
+    } catch (error) {
+      console.error("Error submitting return request:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit return request",
+        variant: "destructive",
+      });
     }
   };
 
