@@ -39,7 +39,7 @@ const authNavItems: NavItem[] = [
 
 const userNavItems: NavItem[] = [
   { path: "/profile", label: "My Profile", icon: User },
-  { path: "/orders", label: "My Orders" },
+  { path: "/profile", label: "My Orders" },
   { path: "/profile?tab=wishlist", label: "My Wishlist" },
   { path: "/profile?tab=reviews", label: "My Reviews" },
   { path: "/profile?tab=settings", label: "Account Settings" },
