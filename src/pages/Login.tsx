@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import { useAdmin } from "@/hooks/use-admin";
 import { auth, googleProvider, db } from "@/integrations/firebase/client";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, createUserWithEmailAndPassword } from "firebase/auth";
 import { Separator } from "@/components/ui/separator";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 
 const Login = () => {
   const { toast } = useToast();
@@ -39,6 +38,9 @@ const Login = () => {
           emailVerified: user.emailVerified,
           providerId: user.providerData[0]?.providerId
         });
+        
+        // Check if user is admin when they are authenticated
+        checkUserRole(user);
       } else {
         console.log("User is signed out");
         setCurrentUser(null);
@@ -48,25 +50,34 @@ const Login = () => {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const currentFirebaseUser = auth.currentUser;
-      if (currentFirebaseUser) {
-        if (currentFirebaseUser.email === "admin@test.com") {
+  const checkUserRole = async (user) => {
+    try {
+      // First check if email is admin email
+      if (user.email === "admin@test.com") {
+        console.log("Admin email detected, setting admin status");
+        localStorage.setItem("userRole", "admin");
+        setAdminStatus(true);
+        navigate("/admin");
+      } else {
+        // Check Firestore for user role
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists() && userSnap.data().role === "admin") {
+          console.log("Admin role detected in Firestore");
           localStorage.setItem("userRole", "admin");
           setAdminStatus(true);
           navigate("/admin");
-          return;
         } else {
+          console.log("Regular user detected");
           localStorage.setItem("userRole", "user");
           navigate("/profile");
-          return;
         }
       }
-    };
-    
-    checkAuth();
-  }, [navigate, setAdminStatus]);
+    } catch (error) {
+      console.error("Error checking user role:", error);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,71 +89,75 @@ const Login = () => {
     console.log("Login attempt:", { email: trimmedEmail });
     
     try {
-      if (trimmedEmail === "admin@test.com") {
+      if (trimmedEmail === "admin@test.com" && trimmedPassword === "admin") {
         console.log("Admin credentials detected");
         
-        // Try to create admin account if it doesn't exist
         try {
-          await createUserWithEmailAndPassword(auth, trimmedEmail, trimmedPassword)
+          // Try signing in first
+          await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword)
             .then(async (userCredential) => {
-              const user = userCredential.user;
-              
-              // Set up admin profile in Firestore
-              await setDoc(doc(db, "users", user.uid), {
-                email: trimmedEmail,
-                name: "Admin",
-                role: "admin",
-                createdAt: new Date()
-              });
-              
-              console.log("Admin account created successfully");
+              handleAdminLogin(userCredential.user);
             })
-            .catch((error) => {
-              // If account already exists, this is fine - we'll try to sign in
-              console.log("Admin account may already exist:", error.code);
+            .catch(async () => {
+              // If login fails, try creating the account
+              console.log("Admin login failed, attempting to create admin account");
+              await createUserWithEmailAndPassword(auth, trimmedEmail, trimmedPassword)
+                .then(async (userCredential) => {
+                  await handleAdminLogin(userCredential.user);
+                })
+                .catch((createError) => {
+                  console.error("Error creating admin account:", createError);
+                  throw createError;
+                });
             });
-        } catch (createError) {
-          console.log("Error creating admin:", createError);
-          // Ignore creation errors - we'll try to sign in anyway
+        } catch (authError) {
+          console.error("Authentication error:", authError);
+          toast({
+            title: "Authentication failed",
+            description: "Could not authenticate with admin credentials.",
+            variant: "destructive",
+          });
         }
-        
-        // Now try to sign in
-        await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword)
-          .then((userCredential) => {
-            const user = userCredential.user;
-            
+      } 
+      else if (trimmedEmail && trimmedPassword) {
+        try {
+          const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
+          const user = userCredential.user;
+          
+          localStorage.setItem("userName", user.displayName || '');
+          localStorage.setItem("userEmail", user.email || '');
+          
+          // Check if the user is an admin in Firestore
+          const userRef = doc(db, "users", user.uid);
+          const userSnap = await getDoc(userRef);
+          
+          if (userSnap.exists() && userSnap.data().role === "admin") {
             localStorage.setItem("userRole", "admin");
-            localStorage.setItem("userName", "Admin");
-            localStorage.setItem("userEmail", trimmedEmail);
-            
+            setAdminStatus(true);
             toast({
               title: "Welcome back, Admin!",
               description: "You have successfully logged in to your account.",
             });
-            
             navigate("/admin");
-          })
-          .catch((error) => {
-            throw error;
+          } else {
+            localStorage.setItem("userRole", "user");
+            toast({
+              title: "Welcome back!",
+              description: "You have successfully logged in to your account.",
+            });
+            navigate("/profile");
+          }
+        } catch (error: any) {
+          console.error("Login error:", error);
+          toast({
+            title: "Login failed",
+            description: error.message,
+            variant: "destructive",
           });
-      } 
-      else if (trimmedEmail && trimmedPassword) {
-        const userCredential = await signInWithEmailAndPassword(auth, trimmedEmail, trimmedPassword);
-        const user = userCredential.user;
-        
-        localStorage.setItem("userRole", "user");
-        localStorage.setItem("userName", user.displayName || '');
-        localStorage.setItem("userEmail", user.email || '');
-        
-        toast({
-          title: "Welcome back!",
-          description: "You have successfully logged in to your account.",
-        });
-        
-        navigate("/profile");
+        }
       }
     } catch (error: any) {
-      console.error("Login error:", error);
+      console.error("Login process error:", error);
       toast({
         title: "Login failed",
         description: error.message,
@@ -150,6 +165,35 @@ const Login = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAdminLogin = async (user) => {
+    try {
+      // Set up admin profile in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        name: "Admin",
+        role: "admin",
+        createdAt: new Date()
+      }, { merge: true });
+      
+      console.log("Admin account data saved to Firestore");
+      
+      localStorage.setItem("userRole", "admin");
+      localStorage.setItem("userName", "Admin");
+      localStorage.setItem("userEmail", user.email);
+      setAdminStatus(true);
+      
+      toast({
+        title: "Welcome back, Admin!",
+        description: "You have successfully logged in as an administrator.",
+      });
+      
+      navigate("/admin");
+    } catch (error) {
+      console.error("Error setting up admin profile:", error);
+      throw error;
     }
   };
 
