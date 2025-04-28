@@ -3,19 +3,85 @@ import { Mail, Phone, MapPin, Instagram, Twitter, Facebook, ChevronRight, Credit
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { AnnouncementBar } from "@/components/ui/announcement-bar";
+import { useState } from "react";
+import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { db } from "@/integrations/firebase/client";
 
 export default function Footer() {
   const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubscribe = (e: React.FormEvent) => {
+  const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Newsletter subscription successful",
-      description: "Thank you for subscribing to our newsletter!"
-    });
-    (e.target as HTMLFormElement).reset();
+    
+    if (!email.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Check if email already exists
+      const q = query(
+        collection(db, "contact_submissions"),
+        where("email", "==", email),
+        where("type", "==", "newsletter")
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        toast({
+          title: "Already Subscribed",
+          description: "This email is already subscribed to our newsletter",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Add new subscription
+      await addDoc(collection(db, "contact_submissions"), {
+        email: email.trim(),
+        type: "newsletter",
+        createdAt: new Date(),
+      });
+      
+      toast({
+        title: "Success!",
+        description: "Thank you for subscribing to our newsletter!",
+      });
+      
+      setEmail("");
+      
+    } catch (error) {
+      console.error("Error subscribing to newsletter:", error);
+      toast({
+        title: "Error",
+        description: "There was an error subscribing to the newsletter. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -74,9 +140,17 @@ export default function Footer() {
                 type="email"
                 placeholder="Your email address"
                 className="flex-1 bg-background"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
-              <Button type="submit" className="sm:w-auto">Subscribe</Button>
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="sm:w-auto"
+              >
+                {loading ? "Subscribing..." : "Subscribe"}
+              </Button>
             </form>
           </div>
         </div>
