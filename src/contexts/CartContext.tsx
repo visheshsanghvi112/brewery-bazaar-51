@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Product, ProductVariant, Cart, Order, Address, Customer, OrderStatus, ReturnRequest, ReturnStatus } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -11,7 +12,6 @@ import {
 } from './cart/cartReducer';
 import { CartContextType } from './cart/cartTypes';
 import { createOrder, updateCustomer } from './cart/orderManager';
-import { saveOrder } from '@/lib/firebase/collections';
 import { auth, db } from '@/integrations/firebase/client';
 import { doc, getDoc, setDoc, runTransaction, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { 
