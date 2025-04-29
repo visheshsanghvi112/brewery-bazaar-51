@@ -56,7 +56,11 @@ export function ProductsTabContent({
         />
         
         <div className="flex items-center gap-2">
-          <Button onClick={handleAddProduct} className="shrink-0">
+          <Button 
+            onClick={handleAddProduct} 
+            className="shrink-0"
+            disabled={isLoading}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Add Product
           </Button>
@@ -70,10 +74,10 @@ export function ProductsTabContent({
       </div>
       
       {isLoading ? (
-        <div className="text-center py-8 bg-muted/30 rounded-lg p-6">
+        <div className="text-center py-12 bg-muted/30 rounded-lg">
           <div className="flex flex-col items-center space-y-4">
-            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-muted-foreground">Loading products... Please wait</p>
+            <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-muted-foreground font-medium">Processing... Please wait</p>
           </div>
         </div>
       ) : filteredProducts.length > 0 ? (

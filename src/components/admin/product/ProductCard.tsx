@@ -47,8 +47,9 @@ export function ProductCard({
   const onDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
     if (product && product.id) {
-      console.log("Delete initiated for product:", product.id);
+      console.log("Delete initiated for product ID:", product.id);
       handleDeleteProduct(product.id);
     } else {
       console.error("Cannot delete product: Invalid product ID");
@@ -58,6 +59,7 @@ export function ProductCard({
   const onEditClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
     console.log("Edit initiated for product:", product);
     handleEditProduct(product);
   };
@@ -67,7 +69,7 @@ export function ProductCard({
       <Card className="overflow-hidden h-full flex flex-col">
         <div className="aspect-square overflow-hidden relative">
           <img
-            src={product.images[0] || "/placeholder.svg"}
+            src={product.images?.[0] || "/placeholder.svg"}
             alt={product.name}
             className="object-cover w-full h-full transition-transform hover:scale-105"
             onError={(e) => {

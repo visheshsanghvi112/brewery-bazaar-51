@@ -24,6 +24,7 @@ export const addProductToFirestore = async (productData: Omit<Product, 'id'>): P
 // Update existing product in Firestore
 export const updateProductInFirestore = async (productId: string, productData: Partial<Product>): Promise<void> => {
   if (!productId) {
+    console.error("Missing product ID for update operation");
     throw new Error("Missing product ID for update operation");
   }
   
@@ -34,6 +35,7 @@ export const updateProductInFirestore = async (productId: string, productData: P
     // Verify the document exists first
     const docSnap = await getDoc(productRef);
     if (!docSnap.exists()) {
+      console.error(`Product with ID ${productId} does not exist`);
       throw new Error(`Product with ID ${productId} does not exist`);
     }
     
@@ -69,7 +71,6 @@ export const updateProductInFirestore = async (productId: string, productData: P
     }
     
     await updateDoc(productRef, cleanUpdateData);
-    
     console.log("Product updated successfully: ", productId);
   } catch (error) {
     console.error("Error updating product: ", error);
@@ -85,19 +86,24 @@ export const deleteProductFromFirestore = async (productId: string): Promise<voi
   }
 
   try {
-    console.log("Deleting product from Firestore:", productId);
+    console.log("Deleting product from Firestore with ID:", productId);
+    
+    // Get the reference to the document
     const productRef = doc(db, "products", productId);
     
     // Check if document exists before attempting to delete
     const docSnap = await getDoc(productRef);
     if (!docSnap.exists()) {
+      console.error(`Product with ID ${productId} does not exist`);
       throw new Error(`Product with ID ${productId} does not exist`);
     }
     
+    // Perform the actual deletion
     await deleteDoc(productRef);
-    console.log("Product deleted successfully: ", productId);
+    
+    console.log("Product deleted successfully from Firestore with ID:", productId);
   } catch (error) {
-    console.error("Error deleting product: ", error);
+    console.error("Error deleting product from Firestore:", error);
     throw new Error(`Failed to delete product: ${error instanceof Error ? error.message : String(error)}`);
   }
 };

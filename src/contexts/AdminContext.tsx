@@ -216,9 +216,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     }
     
     try {
-      console.log("Deleting product:", productId);
+      console.log("Deleting product with ID:", productId);
       setIsLoading(true);
       
+      // Call the Firestore operation directly
       await deleteProductFromFirestore(productId);
       
       // Update local state after successful deletion
@@ -229,17 +230,18 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       });
       
       toast({
-        title: "Product deleted",
-        description: "The product has been successfully removed.",
+        title: "Success",
+        description: "Product has been successfully deleted",
+        variant: "default", 
       });
       
       // If there are no products after deletion, reload to make sure we didn't miss any
       if (products.length <= 1) {
         console.log("Few or no products left, reloading from Firestore");
-        loadProducts();
+        await loadProducts();
       }
     } catch (error) {
-      console.error("Error deleting product:", error);
+      console.error("Error in handleDeleteProduct:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to delete product. Check console for details.",
@@ -247,7 +249,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       });
       
       // Reload products to ensure state is in sync with Firestore
-      loadProducts();
+      await loadProducts();
     } finally {
       setIsLoading(false);
     }
@@ -304,8 +306,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       
       console.log("Product prepared for saving:", productToSave);
 
-      if (editingProduct) {
-        console.log("Updating existing product:", editingProduct.id);
+      if (editingProduct && editingProduct.id) {
+        console.log("Updating existing product with ID:", editingProduct.id);
         await updateProductInFirestore(editingProduct.id, productToSave);
         
         // Update local state after successful update
@@ -316,8 +318,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         ));
         
         toast({
-          title: "Product updated",
-          description: `${formProduct.name} has been updated successfully.`,
+          title: "Success",
+          description: `${formProduct.name} has been updated successfully`,
+          variant: "default", 
         });
       } else {
         console.log("Adding new product");
@@ -332,8 +335,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         setProducts(prevProducts => [...prevProducts, newProduct]);
         
         toast({
-          title: "Product added",
-          description: `${formProduct.name} has been added successfully.`,
+          title: "Success",
+          description: `${formProduct.name} has been added successfully`,
+          variant: "default", 
         });
       }
       
