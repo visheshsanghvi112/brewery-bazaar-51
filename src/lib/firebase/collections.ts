@@ -1,3 +1,4 @@
+
 import { db } from "@/integrations/firebase/client";
 import { collection, addDoc, getDocs, query, where, updateDoc, doc, getDoc } from "firebase/firestore";
 import { Address, Customer, OrderItem, ReturnRequest } from "@/types";
@@ -248,7 +249,9 @@ export async function getOrders(userId?: string) {
     const querySnapshot = await getDocs(q);
     
     return querySnapshot.docs.map(doc => {
-      const data = doc.data();
+      // Add type assertion to doc.data() to ensure TypeScript treats it as an object
+      const data = doc.data() as Record<string, unknown>;
+      
       return {
         ...data,
         firestoreId: doc.id
