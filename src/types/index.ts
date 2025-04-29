@@ -191,3 +191,109 @@ export interface Review {
   date: string;
   helpful: number;
 }
+
+// New Collection Types
+
+// Inventory Types
+export interface InventoryEntry {
+  id: string;
+  productId: string;
+  variantId: string;
+  quantity: number;
+  lowStockThreshold: number;
+  location?: string;
+  lastRestocked?: string;
+  updatedAt: string;
+  firestoreId?: string;
+}
+
+// Coupon Types
+export interface Coupon {
+  id: string;
+  code: string;
+  type: 'percentage' | 'fixed' | 'free_shipping';
+  value: number; // Percentage or fixed amount
+  minPurchase?: number;
+  maxDiscount?: number;
+  validFrom: string;
+  validUntil: string;
+  usageLimit?: number;
+  usageCount: number;
+  applicableProducts?: string[]; // product IDs
+  applicableCategories?: string[]; // category slugs
+  isActive: boolean;
+  createdAt: string;
+  firestoreId?: string;
+}
+
+// Payment Types
+export interface Payment {
+  id: string;
+  orderId: string;
+  amount: number;
+  method: string;
+  status: 'pending' | 'completed' | 'failed' | 'refunded';
+  transactionId?: string;
+  gateway?: string;
+  date: string;
+  refundId?: string;
+  refundAmount?: number;
+  refundDate?: string;
+  firestoreId?: string;
+}
+
+// Shipping Method Types
+export interface ShippingMethod {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  estimatedDays: number;
+  isActive: boolean;
+  firestoreId?: string;
+}
+
+// Notification Types
+export interface Notification {
+  id: string;
+  userId?: string;
+  type: 'order' | 'return' | 'promotion' | 'system';
+  title: string;
+  message: string;
+  read: boolean;
+  date: string;
+  link?: string;
+  firestoreId?: string;
+}
+
+// Analytics Types
+export interface ProductAnalytics {
+  productId: string;
+  viewCount: number;
+  conversionRate: number;
+  totalSold: number;
+  revenue: number;
+  lastUpdated: string;
+  firestoreId?: string;
+}
+
+// Wishlist Types
+export interface WishlistItem {
+  id: string;
+  userId: string;
+  productId: string;
+  addedAt: string;
+  firestoreId?: string;
+}
+
+// Guest Cart Types
+export interface GuestCart {
+  id: string;
+  guestId: string; // e.g. session ID or device ID
+  items: CartItem[];
+  total: number;
+  createdAt: string;
+  updatedAt: string;
+  convertedToOrder?: boolean;
+  firestoreId?: string;
+}

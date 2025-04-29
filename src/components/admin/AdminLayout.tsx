@@ -1,6 +1,5 @@
-
 import { Link, useLocation } from "react-router-dom";
-import { BarChart, Package, ShoppingCart, Users, RefreshCw } from "lucide-react";
+import { BarChart, Package, ShoppingCart, Users, RefreshCw, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AdminHeader } from "./AdminHeader";
@@ -68,6 +67,15 @@ export function AdminLayout({ children, onLogout }: AdminLayoutProps) {
               >
                 <Users className="h-4 w-4" />
                 Customers
+              </Button>
+            </Link>
+            <Link to="/admin/categories">
+              <Button
+                variant={isActiveRoute("/admin/categories") ? "default" : "outline"}
+                className="flex items-center gap-2"
+              >
+                <FolderOpen className="h-4 w-4" />
+                Categories
               </Button>
             </Link>
           </nav>

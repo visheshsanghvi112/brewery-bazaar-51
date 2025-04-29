@@ -1,4 +1,3 @@
-
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.tsx'
@@ -7,6 +6,8 @@ import { app, auth, db } from './integrations/firebase/client.ts'
 import { onAuthStateChanged } from 'firebase/auth'
 import { doc, setDoc } from 'firebase/firestore'
 import { seedProductsToFirestore } from './lib/firebase/products.ts'
+import { seedDefaultCategories } from "./lib/firebase/categoryOperations";
+import { seedDefaultShippingMethods } from "./lib/firebase/shippingMethodOperations";
 
 // Add reCAPTCHA configuration
 window.recaptchaConfig = {
@@ -20,6 +21,11 @@ console.log("Firebase initialized with app:", app.name);
 seedProductsToFirestore().catch(error => {
   console.error("Failed to seed products:", error);
 });
+
+// Initialize the seed functions
+// This will initialize the collection data only if they don't already exist
+seedDefaultCategories().catch(console.error);
+seedDefaultShippingMethods().catch(console.error);
 
 // Set up auth state listener
 onAuthStateChanged(auth, async (user) => {

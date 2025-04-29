@@ -21,6 +21,7 @@ import Footer from "@/components/layout/Footer";
 import { CartProvider } from "@/contexts/CartContext";
 import { PageLoader } from "@/components/ui/page-loader";
 import AdminLogin from "@/pages/AdminLogin";
+import AdminCategories from "./pages/admin/Categories";
 
 // Support pages
 import SupportHome from "@/pages/support/SupportHome";
@@ -75,6 +76,7 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/admin-login" element={<AdminLogin />} />
               <Route path="/admin/*" element={<Admin />} />
+              <Route path="/admin/categories" element={<AdminCategories />} />
               <Route path="/cart" element={<Cart />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/login" element={<Login />} />
