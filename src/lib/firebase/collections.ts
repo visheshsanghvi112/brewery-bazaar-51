@@ -1,4 +1,3 @@
-
 import { db } from "@/integrations/firebase/client";
 import { collection, addDoc, getDocs, query, where, updateDoc, doc, getDoc } from "firebase/firestore";
 import { Address, Customer, OrderItem, ReturnRequest } from "@/types";
@@ -150,7 +149,21 @@ export async function getReturnRequests(userId?: string) {
     const querySnapshot = await getDocs(q);
     
     return querySnapshot.docs.map(doc => {
-      const data = doc.data();
+      // Add explicit type for document data
+      const data = doc.data() as {
+        id: string;
+        orderId: string;
+        orderDate: string;
+        customerName: string;
+        customerEmail: string;
+        items: OrderItem[];
+        reason: string;
+        status: string;
+        createdAt: string;
+        scheduledDate: string;
+        updatedAt: string;
+      };
+      
       return {
         id: data.id,
         orderId: data.orderId,
