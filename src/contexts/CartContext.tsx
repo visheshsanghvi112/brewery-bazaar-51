@@ -20,8 +20,10 @@ import {
   saveCustomer, 
   createReturnRequest,
   getReturnRequests,
+  saveOrder,
   COLLECTIONS 
 } from '@/lib/firebase/collections';
+import { getNextSequence, formatSequenceNumber } from '@/lib/firebase/sequenceOperations';
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
@@ -386,32 +388,4 @@ export const useCart = (): CartContextType => {
     throw new Error('useCart must be used within a CartProvider');
   }
   return context;
-};
-
-const getNextSequence = async (sequenceName: string): Promise<number> => {
-  const sequenceRef = doc(db, "sequences", sequenceName);
-  
-  try {
-    const result = await runTransaction(db, async (transaction) => {
-      const sequenceDoc = await transaction.get(sequenceRef);
-      
-      if (!sequenceDoc.exists()) {
-        transaction.set(sequenceRef, { value: 1 });
-        return 1;
-      }
-      
-      const newValue = (sequenceDoc.data().value || 0) + 1;
-      transaction.update(sequenceRef, { value: newValue });
-      return newValue;
-    });
-    
-    return result;
-  } catch (error) {
-    console.error("Error getting next sequence:", error);
-    return Date.now();
-  }
-};
-
-const formatSequenceNumber = (num: number): string => {
-  return num.toString().padStart(2, '0');
 };
