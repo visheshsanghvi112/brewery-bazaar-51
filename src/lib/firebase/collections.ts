@@ -149,10 +149,23 @@ export async function getReturnRequests(userId?: string) {
     
     const querySnapshot = await getDocs(q);
     
-    return querySnapshot.docs.map(doc => ({
-      ...doc.data(),
-      firestoreId: doc.id
-    })) as ReturnRequest[];
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: data.id,
+        orderId: data.orderId,
+        orderDate: data.orderDate,
+        customerName: data.customerName,
+        customerEmail: data.customerEmail,
+        items: data.items,
+        reason: data.reason,
+        status: data.status,
+        createdAt: data.createdAt,
+        scheduledDate: data.scheduledDate,
+        updatedAt: data.updatedAt,
+        firestoreId: doc.id
+      } as ReturnRequest;
+    });
   } catch (error) {
     console.error("Error getting return requests:", error);
     throw error;
