@@ -71,7 +71,6 @@ export const updateProductInFirestore = async (productId: string, productData: P
     await updateDoc(productRef, cleanUpdateData);
     
     console.log("Product updated successfully: ", productId);
-    return Promise.resolve();
   } catch (error) {
     console.error("Error updating product: ", error);
     throw new Error(`Failed to update product: ${error instanceof Error ? error.message : String(error)}`);
@@ -97,7 +96,6 @@ export const deleteProductFromFirestore = async (productId: string): Promise<voi
     
     await deleteDoc(productRef);
     console.log("Product deleted successfully: ", productId);
-    return Promise.resolve();
   } catch (error) {
     console.error("Error deleting product: ", error);
     throw new Error(`Failed to delete product: ${error instanceof Error ? error.message : String(error)}`);
