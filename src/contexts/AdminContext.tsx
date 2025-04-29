@@ -109,18 +109,34 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     return matchesSearch && matchesCategory;
   });
   
-  // Load products from Firestore
+  // Enhanced products fetching with better error handling
   const loadProducts = async () => {
     try {
       setIsLoading(true);
+      console.log("Starting to fetch products from Firestore");
+      
       const fetchedProducts = await getProductsFromFirestore();
-      setProducts(fetchedProducts);
-      console.log("Products loaded from Firestore:", fetchedProducts.length);
+      
+      if (fetchedProducts.length === 0) {
+        console.warn("No products were fetched from Firestore");
+        toast({
+          title: "Warning",
+          description: "No products found in the database",
+          variant: "default",
+        });
+      } else {
+        console.log("Successfully loaded products:", fetchedProducts.length);
+        setProducts(fetchedProducts);
+        toast({
+          title: "Success",
+          description: `Loaded ${fetchedProducts.length} products from the database`,
+        });
+      }
     } catch (error) {
       console.error("Error loading products from Firestore:", error);
       toast({
         title: "Error",
-        description: "Failed to load products from database",
+        description: "Failed to load products from database. Check console for details.",
         variant: "destructive",
       });
     } finally {
@@ -128,11 +144,24 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Load products when the component mounts
   useEffect(() => {
+    console.log("AdminProvider mounted - loading products");
     loadProducts();
+    
+    // Add a periodic check to ensure we have products
+    const intervalId = setInterval(() => {
+      if (products.length === 0) {
+        console.log("No products found in state, reloading...");
+        loadProducts();
+      }
+    }, 30000); // Check every 30 seconds
+    
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleAddProduct = () => {
+    console.log("Adding new product - resetting form");
     setEditingProduct(null);
     setFormProduct({
       name: "",
@@ -169,23 +198,38 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const handleDeleteProduct = async (productId: string) => {
     try {
+      console.log("Deleting product:", productId);
       setIsLoading(true);
+      
       await deleteProductFromFirestore(productId);
       
       // Update local state after successful deletion
-      setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
+      setProducts(prevProducts => {
+        const updatedProducts = prevProducts.filter(p => p.id !== productId);
+        console.log(`Product ${productId} removed. Remaining products: ${updatedProducts.length}`);
+        return updatedProducts;
+      });
       
       toast({
         title: "Product deleted",
         description: "The product has been successfully removed.",
       });
+      
+      // If there are no products after deletion, reload to make sure we didn't miss any
+      if (products.length <= 1) {
+        console.log("Few or no products left, reloading from Firestore");
+        loadProducts();
+      }
     } catch (error) {
       console.error("Error deleting product:", error);
       toast({
         title: "Error",
-        description: "Failed to delete product. Please check your Firebase permissions.",
+        description: "Failed to delete product. Check console for details.",
         variant: "destructive",
       });
+      
+      // Reload products to ensure state is in sync with Firestore
+      loadProducts();
     } finally {
       setIsLoading(false);
     }
@@ -199,9 +243,10 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       if (!formProduct.name || !formProduct.price || !formProduct.category) {
         toast({
           title: "Missing information",
-          description: "Please fill in all required fields.",
+          description: "Please fill in all required fields: name, price, and category",
           variant: "destructive",
         });
+        setIsLoading(false);
         return;
       }
 
@@ -256,13 +301,14 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       setShowProductForm(false);
       
       // Reload products to ensure we have the latest data
+      console.log("Reloading all products from Firestore to ensure consistency");
       await loadProducts();
       
     } catch (error) {
       console.error("Error saving product:", error);
       toast({
         title: "Error",
-        description: "Failed to save product. Please check your Firebase permissions.",
+        description: "Failed to save product. Check console for details.",
         variant: "destructive",
       });
     } finally {

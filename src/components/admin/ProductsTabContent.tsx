@@ -55,26 +55,56 @@ export function ProductsTabContent({
           categories={categories}
         />
         
-        <Button onClick={handleAddProduct} className="shrink-0">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Product
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleAddProduct} className="shrink-0">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Product
+          </Button>
+          
+          {products.length > 0 && (
+            <p className="text-xs text-muted-foreground hidden md:block">
+              ({products.length} total products)
+            </p>
+          )}
+        </div>
       </div>
       
       {isLoading ? (
         <div className="text-center py-8 bg-muted/30 rounded-lg p-6">
           <div className="flex flex-col items-center space-y-4">
             <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-muted-foreground">Processing... Please wait</p>
+            <p className="text-muted-foreground">Loading products... Please wait</p>
           </div>
         </div>
-      ) : (
+      ) : filteredProducts.length > 0 ? (
         <ProductGrid
           products={filteredProducts}
           categories={categories}
           handleEditProduct={handleEditProduct}
           handleDeleteProduct={handleDeleteProduct}
         />
+      ) : (
+        <div className="text-center py-8 bg-muted/30 rounded-lg p-6">
+          <p className="text-muted-foreground mb-4">
+            {searchTerm || filterCategory 
+              ? "No products found matching your filters." 
+              : "No products found in the database."}
+          </p>
+          <Button 
+            variant="outline" 
+            onClick={() => {
+              setSearchTerm("");
+              setFilterCategory(null);
+            }}
+            className="mr-2"
+          >
+            Clear Filters
+          </Button>
+          <Button onClick={handleAddProduct}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add First Product
+          </Button>
+        </div>
       )}
     </motion.div>
   );

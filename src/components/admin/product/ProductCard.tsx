@@ -2,10 +2,10 @@
 import React from 'react';
 import { motion } from "framer-motion";
 import { Product } from '@/types';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Edit, Trash2 } from 'lucide-react';
-import { 
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Edit, Trash2 } from "lucide-react";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -14,6 +14,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
 interface ProductCardProps {
@@ -29,49 +30,46 @@ export function ProductCard({
   handleEditProduct,
   handleDeleteProduct
 }: ProductCardProps) {
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
-  const category = categories.find(c => c.slug === product.category);
-  const categoryName = category ? category.name : product.category;
-  
   const itemVariant = {
     hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { duration: 0.3 } 
+    }
   };
   
+  const getCategoryName = (slug: string) => {
+    const category = categories.find((cat) => cat.slug === slug);
+    return category ? category.name : slug;
+  };
+
   return (
     <motion.div variants={itemVariant}>
-      <Card className="overflow-hidden hover:shadow-md transition-shadow duration-300">
-        <div className="aspect-square relative overflow-hidden">
+      <Card className="overflow-hidden h-full flex flex-col">
+        <div className="aspect-square overflow-hidden relative">
           <img
-            src={product.images[0] || 'https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg'}
+            src={product.images[0] || "/placeholder.svg"}
             alt={product.name}
-            className="w-full h-full object-cover"
+            className="object-cover w-full h-full transition-transform hover:scale-105"
+            onError={(e) => {
+              (e.target as HTMLImageElement).onerror = null;
+              (e.target as HTMLImageElement).src = "/placeholder.svg";
+            }}
           />
-          
           {product.originalPrice && (
-            <div className="absolute top-2 left-2 bg-red-600 text-white text-xs font-medium px-2 py-1 rounded">
+            <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
               Sale
-            </div>
-          )}
-          
-          {product.featured && (
-            <div className="absolute top-2 right-2 bg-amber-600 text-white text-xs font-medium px-2 py-1 rounded">
-              Featured
             </div>
           )}
         </div>
         
-        <CardContent className="p-4">
-          <div className="mb-1 text-sm text-muted-foreground capitalize">
-            {categoryName}
-          </div>
-          <h3 className="font-medium mb-1">{product.name}</h3>
-          <div className="text-sm mb-2 line-clamp-2 text-muted-foreground">
-            {product.description}
-          </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">
+        <CardContent className="pt-4 flex-1">
+          <h3 className="font-medium line-clamp-1">{product.name}</h3>
+          
+          <div className="flex items-center justify-between mt-1">
+            <div className="flex items-baseline gap-2">
+              <span className="font-semibold">
                 ₹{(product.price / 100).toFixed(2)}
               </span>
               {product.originalPrice && (
@@ -80,60 +78,73 @@ export function ProductCard({
                 </span>
               )}
             </div>
-            <div className="text-sm">
-              {product.inStock ? (
-                <span className="text-green-600">In Stock</span>
-              ) : (
-                <span className="text-red-600">Out of Stock</span>
-              )}
-            </div>
+            <span className="text-xs text-muted-foreground">
+              {getCategoryName(product.category)}
+            </span>
+          </div>
+          
+          <div className="mt-2">
+            <p className="text-xs text-muted-foreground line-clamp-2">
+              {product.description || "No description available"}
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap gap-1 mt-2">
+            {product.variants && product.variants.map((variant) => (
+              <div
+                key={variant.id}
+                className="inline-flex items-center border rounded-full px-2 py-0.5 text-xs"
+                style={{
+                  backgroundColor: `${variant.colorCode}30`,
+                  borderColor: `${variant.colorCode}50`
+                }}
+              >
+                {variant.size} / {variant.color}
+              </div>
+            ))}
           </div>
         </CardContent>
         
-        <CardFooter className="p-4 pt-0 flex gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1"
+        <CardFooter className="border-t pt-4 flex justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-1/2"
             onClick={() => handleEditProduct(product)}
           >
-            <Edit className="h-4 w-4 mr-1" />
-            Edit
+            <Edit className="mr-2 h-4 w-4" /> Edit
           </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            <Trash2 className="h-4 w-4 mr-1" />
-            Delete
-          </Button>
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-1/2 ml-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the product "{product.name}" and cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => handleDeleteProduct(product.id)}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </CardFooter>
       </Card>
-
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to delete this product?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. The product "{product.name}" will be permanently deleted.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => {
-                handleDeleteProduct(product.id);
-                setShowDeleteConfirm(false);
-              }}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </motion.div>
   );
 }

@@ -87,16 +87,24 @@ export const deleteProductFromFirestore = async (productId: string): Promise<voi
   }
 };
 
-// Get all products from Firestore with real-time updates
-export const getProductsFromFirestore = async (): Promise<Product[]> => {
+// Get all products from Firestore with improved error handling and retries
+export const getProductsFromFirestore = async (retryCount = 0): Promise<Product[]> => {
   try {
-    console.log("Fetching products from Firestore");
+    console.log("Fetching products from Firestore - attempt:", retryCount + 1);
     const querySnapshot = await getDocs(collection(db, "products"));
+    
+    if (querySnapshot.empty && retryCount < 3) {
+      console.log("No products found, retrying...");
+      // Wait for a short time before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return getProductsFromFirestore(retryCount + 1);
+    }
+    
     const products: Product[] = [];
     
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      products.push({
+      const product: Product = {
         id: doc.id,
         name: data.name || '',
         description: data.description || '',
@@ -109,13 +117,25 @@ export const getProductsFromFirestore = async (): Promise<Product[]> => {
         reviews: data.reviews || 0,
         inStock: data.inStock !== undefined ? data.inStock : true,
         featured: data.featured || false
-      });
+      };
+      
+      products.push(product);
+      console.log(`Loaded product: ${product.id} - ${product.name}`);
     });
     
     console.log(`Found ${products.length} products in Firestore`);
     return products;
   } catch (error) {
     console.error("Error getting products from Firestore: ", error);
+    
+    // If we've tried less than 3 times, retry
+    if (retryCount < 3) {
+      console.log(`Retrying product fetch. Attempt ${retryCount + 2}/4`);
+      // Wait for a short time before retrying
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      return getProductsFromFirestore(retryCount + 1);
+    }
+    
     throw error;
   }
 };
