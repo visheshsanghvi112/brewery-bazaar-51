@@ -51,6 +51,7 @@ interface AdminContextType {
   handleUpdateOrderStatus: (orderId: string, status: OrderStatus) => void;
   handleFileChange: (index: number, file: File | null) => void;
   handleRemoveImage: (index: number) => void;
+  isLoading: boolean;
 }
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
