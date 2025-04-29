@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { OrderStatus } from "@/types";
+import { useAdmin } from "@/hooks/use-admin";
 import {
   Card,
   CardContent,
@@ -28,14 +30,20 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { StatusBadge } from "@/components/admin/StatusBadge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { AlertTriangle } from "lucide-react";
 
 export default function Returns() {
   const { orders, requestReturn, returnRequests } = useCart();
   const { toast } = useToast();
+  const { isAdmin } = useAdmin();
   const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<any[]>([]);
   const [returnReason, setReturnReason] = useState("wrong_size");
   const [additionalComments, setAdditionalComments] = useState("");
+  const [adminJustification, setAdminJustification] = useState("");
+  const [showAdminDialog, setShowAdminDialog] = useState(false);
 
   const nonCancelledOrders = orders.filter(order => 
     order.status !== 'Cancelled' && 
@@ -58,6 +66,38 @@ export default function Returns() {
     }
   };
 
+  const validateAdminJustification = () => {
+    if (adminJustification.trim().length < 25) {
+      toast({
+        title: "Insufficient Justification",
+        description: "Admin must provide a detailed explanation (minimum 25 characters) for processing a return.",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const handleInitiateReturn = () => {
+    if (!selectedOrder || selectedItems.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select an order and at least one item to return",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // If user is admin, show justification dialog instead of submitting directly
+    if (isAdmin) {
+      setShowAdminDialog(true);
+      return;
+    }
+
+    // For regular users, process normally
+    handleSubmitReturn();
+  };
+
   const handleSubmitReturn = async () => {
     if (!selectedOrder) {
       toast({
@@ -77,8 +117,25 @@ export default function Returns() {
       return;
     }
 
+    // For admins, validate justification
+    if (isAdmin) {
+      if (!validateAdminJustification()) {
+        return;
+      }
+    }
+
     // Combine reason and additional comments
-    const fullReason = `${getReasonText(returnReason)}${additionalComments ? ': ' + additionalComments : ''}`;
+    let fullReason = getReasonText(returnReason);
+    
+    // For regular users
+    if (!isAdmin && additionalComments) {
+      fullReason += ': ' + additionalComments;
+    }
+    
+    // For admin users, include their justification
+    if (isAdmin) {
+      fullReason += `: ${additionalComments || ''}\n\nADMIN OVERRIDE: ${adminJustification}`;
+    }
     
     try {
       // Request the return and await the promise
@@ -89,6 +146,8 @@ export default function Returns() {
         setSelectedItems([]);
         setReturnReason("wrong_size");
         setAdditionalComments("");
+        setAdminJustification("");
+        setShowAdminDialog(false);
       }
     } catch (error) {
       console.error("Error submitting return request:", error);
@@ -166,6 +225,11 @@ export default function Returns() {
               <CardTitle>Request a Return</CardTitle>
               <CardDescription>
                 Select an order and the items you want to return
+                {isAdmin && (
+                  <span className="block mt-1 text-amber-600 font-medium">
+                    ⚠️ Admin users: Special justification required for returns
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -274,7 +338,7 @@ export default function Returns() {
               <CardFooter>
                 <Button 
                   disabled={selectedItems.length === 0} 
-                  onClick={handleSubmitReturn}
+                  onClick={handleInitiateReturn}
                   className="ml-auto"
                 >
                   Submit Return Request
@@ -282,6 +346,52 @@ export default function Returns() {
               </CardFooter>
             )}
           </Card>
+
+          {/* Admin Return Justification Dialog */}
+          <Dialog open={showAdminDialog} onOpenChange={setShowAdminDialog}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-amber-600">
+                  <AlertTriangle className="h-5 w-5" />
+                  Admin Return Justification Required
+                </DialogTitle>
+                <DialogDescription>
+                  As an administrator, you must provide a detailed explanation for processing this return.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="justification" className="text-left font-medium">
+                    Detailed Justification <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    id="justification"
+                    placeholder="Please explain in detail why this return needs to be processed by an admin (minimum 25 characters)"
+                    value={adminJustification}
+                    onChange={(e) => setAdminJustification(e.target.value)}
+                    rows={5}
+                    className={`${adminJustification.length < 25 ? 'border-red-300' : ''}`}
+                  />
+                  {adminJustification.length < 25 && (
+                    <p className="text-xs text-red-500">
+                      {adminJustification.length} / 25 characters minimum
+                    </p>
+                  )}
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowAdminDialog(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleSubmitReturn}
+                  disabled={adminJustification.trim().length < 25}
+                >
+                  Submit with Justification
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Previous Return Requests */}
           {returnRequests.length > 0 && (
