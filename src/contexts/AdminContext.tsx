@@ -189,6 +189,15 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const handleEditProduct = (product: Product) => {
     console.log("Editing product:", product);
+    if (!product || !product.id) {
+      toast({
+        title: "Error",
+        description: "Invalid product data. Cannot edit.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setEditingProduct(product);
     setFormProduct({...product});
     setProductImages([null]);
@@ -197,6 +206,15 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   };
 
   const handleDeleteProduct = async (productId: string) => {
+    if (!productId) {
+      toast({
+        title: "Error",
+        description: "Invalid product ID. Cannot delete.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     try {
       console.log("Deleting product:", productId);
       setIsLoading(true);
@@ -224,7 +242,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       console.error("Error deleting product:", error);
       toast({
         title: "Error",
-        description: "Failed to delete product. Check console for details.",
+        description: error instanceof Error ? error.message : "Failed to delete product. Check console for details.",
         variant: "destructive",
       });
       
@@ -240,10 +258,31 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       console.log("Saving product with data:", formProduct);
 
-      if (!formProduct.name || !formProduct.price || !formProduct.category) {
+      // Validate required fields
+      if (!formProduct.name || formProduct.name.trim() === '') {
         toast({
           title: "Missing information",
-          description: "Please fill in all required fields: name, price, and category",
+          description: "Product name is required",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!formProduct.price || formProduct.price <= 0) {
+        toast({
+          title: "Invalid price",
+          description: "Product price must be greater than zero",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!formProduct.category) {
+        toast({
+          title: "Missing information",
+          description: "Please select a category",
           variant: "destructive",
         });
         setIsLoading(false);
@@ -308,7 +347,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       console.error("Error saving product:", error);
       toast({
         title: "Error",
-        description: "Failed to save product. Check console for details.",
+        description: error instanceof Error ? error.message : "Failed to save product. Check console for details.",
         variant: "destructive",
       });
     } finally {

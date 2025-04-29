@@ -17,12 +17,16 @@ export const addProductToFirestore = async (productData: Omit<Product, 'id'>): P
     return docRef.id;
   } catch (error) {
     console.error("Error adding product: ", error);
-    throw error;
+    throw new Error(`Failed to add product: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
 // Update existing product in Firestore
 export const updateProductInFirestore = async (productId: string, productData: Partial<Product>): Promise<void> => {
+  if (!productId) {
+    throw new Error("Missing product ID for update operation");
+  }
+  
   try {
     console.log("Updating product in Firestore:", { productId, productData });
     const productRef = doc(db, "products", productId);
@@ -58,13 +62,19 @@ export const updateProductInFirestore = async (productId: string, productData: P
     cleanUpdateData.updatedAt = new Date();
     
     console.log("Clean update data for Firestore:", cleanUpdateData);
+    
+    if (Object.keys(cleanUpdateData).length === 0) {
+      console.log("No changes detected, skipping update");
+      return;
+    }
+    
     await updateDoc(productRef, cleanUpdateData);
     
     console.log("Product updated successfully: ", productId);
-    return Promise.resolve(); // Explicitly return resolved promise for better handling
+    return Promise.resolve();
   } catch (error) {
     console.error("Error updating product: ", error);
-    throw error;
+    throw new Error(`Failed to update product: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
@@ -87,10 +97,10 @@ export const deleteProductFromFirestore = async (productId: string): Promise<voi
     
     await deleteDoc(productRef);
     console.log("Product deleted successfully: ", productId);
-    return Promise.resolve(); // Explicitly return resolved promise for better handling
+    return Promise.resolve();
   } catch (error) {
     console.error("Error deleting product: ", error);
-    throw error;
+    throw new Error(`Failed to delete product: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
 
@@ -143,6 +153,6 @@ export const getProductsFromFirestore = async (retryCount = 0): Promise<Product[
       return getProductsFromFirestore(retryCount + 1);
     }
     
-    throw error;
+    throw new Error(`Failed to fetch products: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
