@@ -11,7 +11,7 @@ import { ReturnRequest, ReturnStatus, OrderStatus } from "@/types";
 import { useLocalStorage } from "@/hooks/use-local-storage";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/integrations/firebase/client";
-import { collection, query, getDocs, doc, updateDoc, getDoc, orderBy } from "firebase/firestore";
+import { collection, query, getDocs, doc, updateDoc, getDoc, orderBy, where } from "firebase/firestore";
 import { sendReturnStatusUpdateEmail } from "@/utils/emailService";
 
 export const ReturnsTabContent = () => {
@@ -31,10 +31,10 @@ export const ReturnsTabContent = () => {
         const querySnapshot = await getDocs(q);
         
         const fetchedReturns = querySnapshot.docs.map(doc => {
-          const data = doc.data();
+          const data = doc.data() as ReturnRequest;
           return {
             ...data,
-            id: data.id,
+            id: data.id || doc.id,
             firestoreId: doc.id
           } as ReturnRequest;
         });

@@ -1,3 +1,4 @@
+
 // Product Types
 export interface Product {
   id: string;
@@ -154,6 +155,9 @@ export interface ReturnRequest {
   lastNotificationStatus?: EmailStatus;
   lastNotificationDate?: string;
   processingNotes?: string;
+  // Add firestoreId property to resolve type errors
+  firestoreId?: string;
+  userId?: string;
 }
 
 // Return Analytics

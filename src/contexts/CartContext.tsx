@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Product, ProductVariant, Cart, Order, Address, Customer, OrderStatus, ReturnRequest, ReturnStatus } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -234,7 +233,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           
           // Add the Firestore ID to the return request
-          returnRequest.firestoreId = docRef.id;
+          (returnRequest as any).firestoreId = docRef.id;
           
           // Also update the order to mark it as having a return request
           if (order.firestoreId) {
