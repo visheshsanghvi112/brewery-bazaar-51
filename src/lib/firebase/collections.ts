@@ -108,11 +108,14 @@ export async function saveCustomer(customer: Customer) {
 export async function createReturnRequest(returnRequest: ReturnRequest) {
   try {
     const returnsRef = collection(db, COLLECTIONS.RETURN_REQUESTS);
-    const docRef = await addDoc(returnsRef, {
+    // Make sure we're not spreading anything that might not be an object
+    const returnData = {
       ...returnRequest,
       createdAt: returnRequest.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString()
-    });
+    };
+    
+    const docRef = await addDoc(returnsRef, returnData);
     
     console.log(`Return request ${returnRequest.id} saved with Firestore ID: ${docRef.id}`);
     return docRef.id;

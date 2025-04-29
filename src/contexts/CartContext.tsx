@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Product, ProductVariant, Cart, Order, Address, Customer, OrderStatus, ReturnRequest, ReturnStatus } from '@/types';
 import { useToast } from '@/hooks/use-toast';
@@ -76,7 +75,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           // Load shipping details if available
           const shippingDetails = await getShippingDetails(userId);
-          if (shippingDetails) {
+          if (shippingDetails && 'shippingAddress' in shippingDetails && 'billingAddress' in shippingDetails) {
             dispatch({ 
               type: 'SET_SHIPPING_ADDRESS', 
               payload: shippingDetails.shippingAddress as Address 
