@@ -108,10 +108,19 @@ export async function saveCustomer(customer: Customer) {
 export async function createReturnRequest(returnRequest: ReturnRequest) {
   try {
     const returnsRef = collection(db, COLLECTIONS.RETURN_REQUESTS);
-    // Make sure we're not spreading anything that might not be an object
+    
+    // Fixed: Create a new object instead of directly spreading returnRequest
     const returnData = {
-      ...returnRequest,
+      id: returnRequest.id,
+      orderId: returnRequest.orderId,
+      orderDate: returnRequest.orderDate,
+      customerName: returnRequest.customerName,
+      customerEmail: returnRequest.customerEmail,
+      items: returnRequest.items,
+      reason: returnRequest.reason,
+      status: returnRequest.status,
       createdAt: returnRequest.createdAt || new Date().toISOString(),
+      scheduledDate: returnRequest.scheduledDate,
       updatedAt: new Date().toISOString()
     };
     
