@@ -1,7 +1,8 @@
+
 import { Address, Customer, Order, OrderStatus } from "@/types";
 import { CartState } from "./cartReducer";
 import { db } from "@/integrations/firebase/client";
-import { doc, getDoc, setDoc, runTransaction } from "firebase/firestore";
+import { doc, getDoc, setDoc, runTransaction, collection, addDoc } from "firebase/firestore";
 
 // Function to get the next sequence number
 const getNextSequence = async (sequenceName: string): Promise<number> => {
@@ -86,6 +87,23 @@ export const createOrder = async (
     date: new Date().toISOString(),
     paymentMethod
   };
+  
+  // Save the order to Firestore "orders" collection
+  try {
+    const orderRef = collection(db, "orders");
+    await addDoc(orderRef, {
+      ...newOrder,
+      customerId: customer.id, // Add customer reference
+      customerName: customer.name,
+      customerEmail: customer.email,
+      userId: customer.id.startsWith('cust-') ? null : customer.id, // Link to user if ID isn't temporary
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    console.log(`Order ${orderId} saved to Firestore orders collection`);
+  } catch (error) {
+    console.error("Error saving order to Firestore:", error);
+  }
   
   return { newOrder, orderId };
 };

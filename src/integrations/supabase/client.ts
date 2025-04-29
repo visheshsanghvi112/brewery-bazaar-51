@@ -28,3 +28,11 @@ supabase.channel('public:products')
     console.log('Product change:', payload);
   })
   .subscribe();
+
+// Enable real-time updates for orders table
+// This helps when tracking order status changes
+supabase.channel('public:orders')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, payload => {
+    console.log('Order change:', payload);
+  })
+  .subscribe();

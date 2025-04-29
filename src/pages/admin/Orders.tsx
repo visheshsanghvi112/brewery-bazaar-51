@@ -1,15 +1,55 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdmin } from "@/contexts/AdminContext";
 import { OrdersTabContent } from "@/components/admin/OrdersTabContent";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Order } from "@/types";
 import { BarChart, ShoppingCart, Package, Truck } from "lucide-react";
+import { db } from "@/integrations/firebase/client";
+import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
 
 export default function AdminOrders() {
   const { orders, setOrders, setViewingOrder } = useAdmin();
   const [activeTab, setActiveTab] = useState("all");
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  // Load orders from Firestore when component mounts
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setIsLoading(true);
+      try {
+        const ordersRef = collection(db, "orders");
+        const q = query(ordersRef, orderBy("createdAt", "desc"));
+        const querySnapshot = await getDocs(q);
+        
+        const fetchedOrders = querySnapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            ...data,
+            id: data.id || doc.id,
+            firestoreId: doc.id // Store the Firestore document ID
+          } as Order;
+        });
+        
+        setOrders(fetchedOrders);
+        console.log(`Loaded ${fetchedOrders.length} orders from Firestore`);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load orders. Please try again.",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchOrders();
+  }, []);
 
   // Order counts by status
   const orderCounts = {
@@ -110,6 +150,7 @@ export default function AdminOrders() {
             orders={getFilteredOrders()}
             setViewingOrder={setViewingOrder}
             onUpdateOrder={handleUpdateOrder}
+            isLoading={isLoading}
           />
         </TabsContent>
       </Tabs>

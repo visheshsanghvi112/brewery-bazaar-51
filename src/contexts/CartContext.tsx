@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useReducer } from 'react';
 import { Product, ProductVariant, Cart, Order, Address, Customer, OrderStatus, ReturnRequest, ReturnStatus } from '@/types';
 import { useToast } from '@/components/ui/use-toast';
@@ -13,7 +14,7 @@ import { CartContextType } from './cart/cartTypes';
 import { createOrder, updateCustomer } from './cart/orderManager';
 import { saveOrder } from '@/lib/firebase/userOperations';
 import { auth, db } from '@/integrations/firebase/client';
-import { doc, getDoc, setDoc, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, setDoc, runTransaction, collection, addDoc } from 'firebase/firestore';
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
@@ -80,15 +81,25 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
       
-      const { newOrder, orderId } = await createOrder(state, customer, paymentMethod, orders);
+      // Update customer ID with auth user ID if available
+      const enhancedCustomer = {
+        ...customer,
+        id: auth.currentUser.uid || customer.id,
+      };
       
+      const { newOrder, orderId } = await createOrder(state, enhancedCustomer, paymentMethod, orders);
+      
+      // Save order using Firebase operation
       await saveOrder(auth.currentUser.uid, newOrder);
       
+      // Also save to local storage for now (can be removed later if not needed)
       setOrders([...orders, newOrder]);
       
-      const updatedCustomers = updateCustomer(customer, customers, newOrder.total);
+      // Update customer information
+      const updatedCustomers = updateCustomer(enhancedCustomer, customers, newOrder.total);
       setCustomers(updatedCustomers);
       
+      // Clear cart after successful order
       clearCart();
       
       toast({
@@ -135,6 +146,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         createdAt: new Date().toISOString(),
         scheduledDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
       };
+
+      // Save return request to Firestore if user is authenticated
+      if (auth.currentUser) {
+        try {
+          const returnRef = collection(db, "returnRequests");
+          await addDoc(returnRef, {
+            ...returnRequest,
+            userId: auth.currentUser.uid,
+            updatedAt: new Date().toISOString()
+          });
+          console.log(`Return request ${returnId} saved to Firestore`);
+        } catch (error) {
+          console.error("Error saving return request to Firestore:", error);
+        }
+      }
 
       const updatedOrders = orders.map(o => {
         if (o.id === orderId) {

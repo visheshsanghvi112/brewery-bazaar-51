@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, ShoppingCart } from "lucide-react";
+import { Search, ShoppingCart, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "./StatusBadge";
 import { OrderDetailView } from "./OrderDetailView";
@@ -11,17 +11,26 @@ import { BatchOrderProcessor } from "./BatchOrderProcessor";
 import { Order, OrderStatus } from "@/types";
 import { processBatchOrders } from "@/utils/bulkProcessing";
 import { useToast } from "@/hooks/use-toast";
+import { db } from "@/integrations/firebase/client";
+import { doc, updateDoc } from "firebase/firestore";
 
 interface OrdersTabContentProps {
   orders: Order[];
   setViewingOrder: (order: Order | null) => void;
   onUpdateOrder: (orderId: string, updates: Partial<Order>) => void;
+  isLoading?: boolean;
 }
 
-export const OrdersTabContent = ({ orders, setViewingOrder, onUpdateOrder }: OrdersTabContentProps) => {
+export const OrdersTabContent = ({ 
+  orders, 
+  setViewingOrder, 
+  onUpdateOrder,
+  isLoading = false
+}: OrdersTabContentProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [processingAction, setProcessingAction] = useState(false);
   const { toast } = useToast();
 
   // Filter orders based on search query and status
@@ -31,13 +40,15 @@ export const OrdersTabContent = ({ orders, setViewingOrder, onUpdateOrder }: Ord
       const matchesSearch = 
         searchQuery === "" ||
         order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        order.customer.email.toLowerCase().includes(searchQuery.toLowerCase());
+        order.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        order.customer?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (order.customerName && order.customerName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (order.customerEmail && order.customerEmail.toLowerCase().includes(searchQuery.toLowerCase()));
       
       // Filter by status
       const matchesStatus = 
         statusFilter === "all" || 
-        order.status.toLowerCase() === statusFilter.toLowerCase();
+        order.status?.toLowerCase() === statusFilter.toLowerCase();
       
       return matchesSearch && matchesStatus;
     });
@@ -55,14 +66,29 @@ export const OrdersTabContent = ({ orders, setViewingOrder, onUpdateOrder }: Ord
 
   // Handle batch processing
   const handleBatchProcess = async (orderIds: string[], action: string, value?: string) => {
+    setProcessingAction(true);
     try {
       // Process orders in batch
       const result = await processBatchOrders(orders, orderIds, action, value);
       
-      // Update orders in state
-      result.forEach(updatedOrder => {
+      // Update orders in Firestore
+      for (const updatedOrder of result) {
+        if (updatedOrder.firestoreId) {
+          try {
+            const orderRef = doc(db, "orders", updatedOrder.firestoreId);
+            await updateDoc(orderRef, {
+              status: updatedOrder.status,
+              updatedAt: new Date().toISOString()
+            });
+            console.log(`Updated order ${updatedOrder.id} in Firestore`);
+          } catch (error) {
+            console.error(`Error updating order ${updatedOrder.id}:`, error);
+          }
+        }
+        
+        // Update orders in state
         onUpdateOrder(updatedOrder.id, updatedOrder);
-      });
+      }
       
       // Show success message
       toast({
@@ -77,6 +103,8 @@ export const OrdersTabContent = ({ orders, setViewingOrder, onUpdateOrder }: Ord
         description: "An error occurred during batch processing",
         variant: "destructive",
       });
+    } finally {
+      setProcessingAction(false);
     }
   };
 
@@ -122,6 +150,7 @@ export const OrdersTabContent = ({ orders, setViewingOrder, onUpdateOrder }: Ord
             <BatchOrderProcessor
               orders={orders}
               onBatchProcess={handleBatchProcess}
+              isProcessing={processingAction}
             />
           </div>
         </CardHeader>
@@ -141,14 +170,35 @@ export const OrdersTabContent = ({ orders, setViewingOrder, onUpdateOrder }: Ord
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredOrders.length > 0 ? (
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-10">
+                        <div className="flex flex-col items-center justify-center space-y-3">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                          <p className="text-muted-foreground">Loading orders...</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : filteredOrders.length > 0 ? (
                     filteredOrders.map((order) => (
                       <tr key={order.id} className="border-t hover:bg-muted/30 transition-colors">
                         <td className="p-3">
                           <div className="font-medium">#{order.id}</div>
                         </td>
-                        <td className="p-3">{order.customer.name}</td>
-                        <td className="p-3">{new Date(order.date).toLocaleDateString()}</td>
+                        <td className="p-3">
+                          <div>
+                            {order.customer?.name || order.customerName || "Unknown"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {order.customer?.email || order.customerEmail || ""}
+                          </div>
+                          {order.userId && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              User: {order.userId.slice(0, 8)}...
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3">{new Date(order.date || order.createdAt).toLocaleDateString()}</td>
                         <td className="p-3">
                           <StatusBadge status={order.status} />
                         </td>
