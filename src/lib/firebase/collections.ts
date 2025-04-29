@@ -1,4 +1,3 @@
-
 import { db } from "@/integrations/firebase/client";
 import { collection, addDoc, getDocs, query, where, updateDoc, doc, getDoc } from "firebase/firestore";
 import { Address, Customer, OrderItem, ReturnRequest } from "@/types";
