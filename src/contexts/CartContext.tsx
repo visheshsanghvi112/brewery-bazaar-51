@@ -154,6 +154,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return null;
       }
       
+      // Check if user is admin and prevent checkout
+      const userRole = localStorage.getItem("userRole");
+      if (userRole === "admin") {
+        toast({
+          title: 'Admin checkout restricted',
+          description: 'Admin users cannot place orders. Please use a regular user account to checkout.',
+          variant: 'destructive',
+        });
+        return null;
+      }
+      
       // Update customer ID with auth user ID if available
       const enhancedCustomer = {
         ...customer,

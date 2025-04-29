@@ -20,10 +20,12 @@ import CheckoutLayout from "@/components/checkout/CheckoutLayout";
 import { AddressAutocomplete } from "@/components/checkout/AddressAutocomplete";
 import { auth } from "@/integrations/firebase/client";
 import { LoginDialog } from "@/components/auth/LoginDialog";
+import { useAdmin } from "@/hooks/use-admin";
 
 export default function CartPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isAdmin } = useAdmin();
   const {
     cart,
     removeItem,
@@ -75,7 +77,17 @@ export default function CartPage() {
       setShowLoginDialog(true);
       setStep("cart");
     }
-  }, [step]);
+
+    // Prevent admins from proceeding past cart step
+    if (isAdmin && step !== "cart") {
+      toast({
+        title: "Admin Checkout Restricted",
+        description: "Admin users cannot place orders. Please use a regular user account to checkout.",
+        variant: "destructive"
+      });
+      setStep("cart");
+    }
+  }, [step, isAdmin, toast]);
   
   const formatPrice = (price: number) => {
     return `₹${(price / 100).toFixed(2)}`;
@@ -107,6 +119,16 @@ export default function CartPage() {
       setShowLoginDialog(true);
       return;
     }
+
+    if (isAdmin) {
+      toast({
+        title: "Admin Checkout Restricted",
+        description: "Admin users cannot place orders. Please use a regular user account to checkout.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setStep("shipping");
   };
   
@@ -115,6 +137,15 @@ export default function CartPage() {
     
     if (!auth.currentUser) {
       setShowLoginDialog(true);
+      return;
+    }
+
+    if (isAdmin) {
+      toast({
+        title: "Admin Checkout Restricted",
+        description: "Admin users cannot place orders. Please use a regular user account to checkout.",
+        variant: "destructive"
+      });
       return;
     }
     
@@ -141,6 +172,15 @@ export default function CartPage() {
     
     if (!auth.currentUser) {
       setShowLoginDialog(true);
+      return;
+    }
+
+    if (isAdmin) {
+      toast({
+        title: "Admin Checkout Restricted",
+        description: "Admin users cannot place orders. Please use a regular user account to checkout.",
+        variant: "destructive"
+      });
       return;
     }
     

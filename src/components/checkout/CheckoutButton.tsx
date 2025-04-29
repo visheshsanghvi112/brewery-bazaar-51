@@ -5,6 +5,7 @@ import { ShoppingCart, ArrowRight } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { auth } from "@/integrations/firebase/client";
 import { LoginDialog } from "@/components/auth/LoginDialog";
+import { useAdmin } from "@/hooks/use-admin";
 
 interface CheckoutButtonProps {
   disabled?: boolean;
@@ -15,8 +16,18 @@ interface CheckoutButtonProps {
 const CheckoutButton = ({ disabled = false, total, className }: CheckoutButtonProps) => {
   const { toast } = useToast();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
+  const { isAdmin } = useAdmin();
 
   const handleCheckout = () => {
+    if (isAdmin) {
+      toast({
+        title: "Admin Checkout Restricted",
+        description: "Admin users cannot place orders. Please use a regular user account to checkout.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     if (disabled || total === 0) {
       toast({
         title: "Cannot proceed to checkout",
