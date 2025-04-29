@@ -61,6 +61,7 @@ export const updateProductInFirestore = async (productId: string, productData: P
     await updateDoc(productRef, cleanUpdateData);
     
     console.log("Product updated successfully: ", productId);
+    return Promise.resolve(); // Explicitly return resolved promise for better handling
   } catch (error) {
     console.error("Error updating product: ", error);
     throw error;
@@ -69,6 +70,11 @@ export const updateProductInFirestore = async (productId: string, productData: P
 
 // Delete product from Firestore
 export const deleteProductFromFirestore = async (productId: string): Promise<void> => {
+  if (!productId) {
+    console.error("Invalid product ID provided for deletion");
+    throw new Error("Invalid product ID");
+  }
+
   try {
     console.log("Deleting product from Firestore:", productId);
     const productRef = doc(db, "products", productId);
@@ -81,6 +87,7 @@ export const deleteProductFromFirestore = async (productId: string): Promise<voi
     
     await deleteDoc(productRef);
     console.log("Product deleted successfully: ", productId);
+    return Promise.resolve(); // Explicitly return resolved promise for better handling
   } catch (error) {
     console.error("Error deleting product: ", error);
     throw error;

@@ -44,6 +44,24 @@ export function ProductCard({
     return category ? category.name : slug;
   };
 
+  const onDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (product && product.id) {
+      console.log("Delete initiated for product:", product.id);
+      handleDeleteProduct(product.id);
+    } else {
+      console.error("Cannot delete product: Invalid product ID");
+    }
+  };
+
+  const onEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log("Edit initiated for product:", product);
+    handleEditProduct(product);
+  };
+
   return (
     <motion.div variants={itemVariant}>
       <Card className="overflow-hidden h-full flex flex-col">
@@ -110,7 +128,7 @@ export function ProductCard({
             variant="outline"
             size="sm"
             className="w-1/2"
-            onClick={() => handleEditProduct(product)}
+            onClick={onEditClick}
           >
             <Edit className="mr-2 h-4 w-4" /> Edit
           </Button>
@@ -135,7 +153,7 @@ export function ProductCard({
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                  onClick={() => handleDeleteProduct(product.id)}
+                  onClick={onDeleteClick}
                   className="bg-destructive hover:bg-destructive/90"
                 >
                   Delete
