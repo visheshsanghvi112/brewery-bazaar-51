@@ -1,82 +1,112 @@
 
-import { ReturnRequest, ReturnAnalytics, ReturnStatus } from "@/types";
+import { ReturnRequest, Order, ReturnStatus } from "@/types";
 
-/**
- * Calculates return analytics based on return requests
- */
-export const calculateReturnAnalytics = (returns: ReturnRequest[], orders: any[]): ReturnAnalytics => {
+interface ReturnAnalytics {
+  totalReturns: number;
+  returnRate: number;
+  totalRefunded: number;
+  averageProcessingTime: number;
+  returnsByStatus: {
+    status: ReturnStatus;
+    count: number;
+  }[];
+  returnsByReason: {
+    reason: string;
+    count: number;
+  }[];
+  monthlyReturns: {
+    month: string;
+    count: number;
+  }[];
+}
+
+export const calculateReturnAnalytics = (
+  returnRequests: ReturnRequest[],
+  orders: Order[]
+): ReturnAnalytics => {
   // Total returns
-  const totalReturns = returns.length;
+  const totalReturns = returnRequests.length;
   
-  // Return rate
-  const returnRate = totalReturns > 0 && orders.length > 0 
+  // Return rate (percentage of orders that were returned)
+  const returnRate = orders.length > 0 
     ? (totalReturns / orders.length) * 100 
     : 0;
   
-  // Total refunded
-  const totalRefunded = returns.reduce((acc, ret) => {
-    return acc + (ret.refundAmount || 0);
-  }, 0);
+  // Total amount refunded
+  const totalRefunded = returnRequests.reduce(
+    (sum, request) => sum + (request.refundAmount || 0),
+    0
+  );
   
-  // Average processing time (in days)
-  const avgProcessingDays = returns
-    .filter(ret => ret.status === 'Completed' && ret.refundDate)
-    .map(ret => {
-      const start = new Date(ret.createdAt).getTime();
-      const end = new Date(ret.refundDate!).getTime();
-      return (end - start) / (1000 * 60 * 60 * 24); // convert to days
-    });
+  // Calculate average processing time (in days)
+  const processedReturns = returnRequests.filter(
+    request => request.status === "Completed"
+  );
   
-  const averageProcessingTime = avgProcessingDays.length > 0
-    ? avgProcessingDays.reduce((acc, days) => acc + days, 0) / avgProcessingDays.length
-    : 0;
+  let averageProcessingTime = 0;
+  if (processedReturns.length > 0) {
+    const totalProcessingTime = processedReturns.reduce((total, request) => {
+      const createDate = new Date(request.createdAt).getTime();
+      const completeDate = request.refundDate 
+        ? new Date(request.refundDate).getTime()
+        : new Date().getTime();
+        
+      return total + (completeDate - createDate) / (1000 * 60 * 60 * 24); // Convert to days
+    }, 0);
+    
+    averageProcessingTime = totalProcessingTime / processedReturns.length;
+  }
   
-  // Returns by status
-  const statusCounts: Record<ReturnStatus, number> = {
-    'Requested': 0,
-    'Approved': 0,
-    'In Progress': 0,
-    'Completed': 0,
-    'Rejected': 0
-  };
-  
-  returns.forEach(ret => {
-    statusCounts[ret.status]++;
+  // Returns grouped by status
+  const statusCounts = new Map<ReturnStatus, number>();
+  returnRequests.forEach(request => {
+    const status = request.status;
+    statusCounts.set(status, (statusCounts.get(status) || 0) + 1);
   });
   
-  const returnsByStatus = Object.entries(statusCounts).map(([status, count]) => ({
-    status: status as ReturnStatus,
-    count
-  }));
+  const returnsByStatus = Array.from(statusCounts.entries()).map(
+    ([status, count]) => ({ status, count })
+  );
   
-  // Returns by reason
-  const reasonCounts: Record<string, number> = {};
-  
-  returns.forEach(ret => {
-    const reason = ret.reason;
-    reasonCounts[reason] = (reasonCounts[reason] || 0) + 1;
+  // Returns grouped by reason
+  const reasonCounts = new Map<string, number>();
+  returnRequests.forEach(request => {
+    // Extract the main reason from the possibly longer reason string
+    let reason = request.reason || "Unknown";
+    if (reason.includes(':')) {
+      reason = reason.split(':')[0].trim();
+    }
+    
+    reasonCounts.set(reason, (reasonCounts.get(reason) || 0) + 1);
   });
   
-  const returnsByReason = Object.entries(reasonCounts).map(([reason, count]) => ({
-    reason,
-    count
-  }));
+  const returnsByReason = Array.from(reasonCounts.entries()).map(
+    ([reason, count]) => ({ reason, count })
+  );
   
-  // Monthly returns
-  const monthlyData: Record<string, number> = {};
+  // Monthly return trends
+  const monthlyReturnMap = new Map<string, number>();
   
-  returns.forEach(ret => {
-    const date = new Date(ret.createdAt);
-    const monthYear = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-    monthlyData[monthYear] = (monthlyData[monthYear] || 0) + 1;
+  // Initialize with last 6 months
+  const today = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(today);
+    d.setMonth(today.getMonth() - i);
+    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    monthlyReturnMap.set(monthKey, 0);
+  }
+  
+  // Count returns by month
+  returnRequests.forEach(request => {
+    const date = new Date(request.createdAt);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    monthlyReturnMap.set(monthKey, (monthlyReturnMap.get(monthKey) || 0) + 1);
   });
   
-  const monthlyReturns = Object.entries(monthlyData)
-    .sort(([monthA], [monthB]) => monthA.localeCompare(monthB))
-    .map(([month, count]) => ({
-      month,
-      count
-    }));
+  // Convert to array and sort chronologically
+  const monthlyReturns = Array.from(monthlyReturnMap.entries())
+    .map(([month, count]) => ({ month, count }))
+    .sort((a, b) => a.month.localeCompare(b.month));
   
   return {
     totalReturns,
@@ -87,11 +117,4 @@ export const calculateReturnAnalytics = (returns: ReturnRequest[], orders: any[]
     returnsByReason,
     monthlyReturns
   };
-};
-
-/**
- * Formats currency values (cents to dollars)
- */
-export const formatCurrency = (amount: number): string => {
-  return `$${(amount / 100).toFixed(2)}`;
 };

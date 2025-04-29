@@ -55,7 +55,11 @@ export default function AdminOrders() {
             customerEmail: data.customerEmail,
             createdAt: data.createdAt,
             updatedAt: data.updatedAt,
-            firestoreId: doc.id
+            firestoreId: doc.id,
+            trackingNumber: data.trackingNumber,
+            fulfillmentStatus: data.fulfillmentStatus,
+            lastEmailNotification: data.lastEmailNotification,
+            notes: data.notes
           };
           
           return order;

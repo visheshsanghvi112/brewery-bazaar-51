@@ -1,501 +1,394 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
-import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { XCircle, Printer, Mail, FileText, RefreshCw } from "lucide-react";
-import { Order, OrderStatus, ReturnStatus } from "@/types";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { X, Package, MapPin, CreditCard, Truck, Calendar, Mail, Send } from "lucide-react";
+import { Order, OrderStatus } from "@/types";
 import { OrderStatusHandler } from "./OrderStatusHandler";
-import { OrderFulfillmentTracker } from "./OrderFulfillmentTracker";
-import { StatusBadge } from "./StatusBadge";
-import { sendOrderStatusUpdateEmail } from "@/utils/emailService";
+import { OrderActions } from "./OrderUtils";
+import { db } from "@/integrations/firebase/client";
+import { doc, updateDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
-import { generateShippingLabel } from "@/utils/shippingLabels";
-import { Badge } from "@/components/ui/badge";
+import { sendOrderStatusUpdateEmail } from "@/utils/emailService";
 
 interface OrderDetailViewProps {
   order: Order;
   onClose: () => void;
-  onUpdateOrder: (
-    orderId: string, 
-    updates: Partial<Order>
-  ) => void;
+  onUpdateOrder: (orderId: string, updates: Partial<Order>) => void;
 }
 
-export function OrderDetailView({ 
-  order, 
-  onClose,
-  onUpdateOrder
-}: OrderDetailViewProps) {
+export const OrderDetailView = ({ order, onClose, onUpdateOrder }: OrderDetailViewProps) => {
   const [activeTab, setActiveTab] = useState("details");
+  const [trackingNumber, setTrackingNumber] = useState(order.trackingNumber || "");
   const [notes, setNotes] = useState(order.notes || "");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [isSendingNotification, setIsSendingNotification] = useState(false);
   const { toast } = useToast();
 
-  // Handle status update
-  const handleStatusUpdate = (orderId: string, status: OrderStatus) => {
+  const handleOrderUpdate = async (field: string, value: any) => {
+    if (!order.firestoreId) {
+      toast({
+        title: "Error",
+        description: "Cannot update order: Firestore ID is missing",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      const orderRef = doc(db, "orders", order.firestoreId);
+      const updateData = {
+        [field]: value,
+        updatedAt: new Date().toISOString()
+      };
+      
+      await updateDoc(orderRef, updateData);
+      
+      // Update local state
+      onUpdateOrder(order.id, { [field]: value });
+      
+      toast({
+        title: "Order updated",
+        description: `Order #${order.id} ${field} has been updated`,
+      });
+    } catch (error) {
+      console.error(`Error updating order ${field}:`, error);
+      toast({
+        title: "Update failed",
+        description: `Failed to update order ${field}`,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleUpdateStatus = (orderId: string, status: OrderStatus) => {
     onUpdateOrder(orderId, { status });
-    
-    toast({
-      title: "Order updated",
-      description: `Order status changed to ${status}`,
-    });
   };
-  
-  // Handle fulfillment update
-  const handleFulfillmentUpdate = (
-    orderId: string, 
-    fulfillmentStatus: string, 
-    trackingNumber?: string
-  ) => {
-    const updates: Partial<Order> = {
-      fulfillmentStatus: fulfillmentStatus as any
-    };
-    
-    if (trackingNumber) {
-      updates.trackingNumber = trackingNumber;
+
+  const handleDeleteOrder = (orderId: string) => {
+    onClose();
+  };
+
+  const handleSendManualNotification = async () => {
+    if (!order.customer?.email && !order.customerEmail) {
+      toast({
+        title: "Cannot send notification",
+        description: "Customer email address is missing",
+        variant: "destructive"
+      });
+      return;
     }
     
-    onUpdateOrder(orderId, updates);
-    
-    toast({
-      title: "Fulfillment updated",
-      description: `Order fulfillment status updated to ${fulfillmentStatus}`,
-    });
-  };
-  
-  // Handle inventory update
-  const handleInventoryUpdate = () => {
-    onUpdateOrder(order.id, { inventoryUpdated: true });
-    
-    toast({
-      title: "Inventory updated",
-      description: "Inventory has been updated for this order",
-    });
-  };
-  
-  // Handle notes update
-  const handleUpdateNotes = () => {
-    setIsSaving(true);
+    setIsSendingNotification(true);
     
     try {
-      onUpdateOrder(order.id, { notes });
+      const emailResult = await sendOrderStatusUpdateEmail(order);
       
-      toast({
-        title: "Notes updated",
-        description: "Order notes have been saved",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save notes",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-  
-  // Generate shipping label
-  const handleGenerateLabel = async () => {
-    try {
-      const labelUrl = await generateShippingLabel(order);
-      
-      onUpdateOrder(order.id, { 
-        shippingLabelGenerated: true,
-        trackingNumber: labelUrl.split("-").pop() || order.trackingNumber
-      });
-      
-      toast({
-        title: "Label generated",
-        description: "Shipping label has been generated successfully",
-      });
-      
-      // Open label in new window
-      window.open(labelUrl, "_blank");
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to generate shipping label",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Send order status notification
-  const handleSendNotification = async () => {
-    setIsSendingEmail(true);
-    
-    try {
-      const result = await sendOrderStatusUpdateEmail(order);
-      
-      if (result.success) {
-        onUpdateOrder(order.id, {
-          lastEmailNotification: {
-            status: order.status,
-            date: new Date().toISOString()
-          }
-        });
+      if (emailResult.success) {
+        // Update the order with email notification status
+        if (order.firestoreId) {
+          const orderRef = doc(db, "orders", order.firestoreId);
+          await updateDoc(orderRef, {
+            lastEmailNotification: {
+              status: "Sent",
+              date: new Date().toISOString()
+            },
+            updatedAt: new Date().toISOString()
+          });
+          
+          onUpdateOrder(order.id, {
+            lastEmailNotification: {
+              status: "Sent",
+              date: new Date().toISOString()
+            }
+          });
+        }
         
         toast({
-          title: "Email sent",
-          description: "Status notification email has been sent",
+          title: "Notification sent",
+          description: `Status update email sent to ${order.customer?.email || order.customerEmail}`,
         });
       } else {
-        throw new Error(result.message);
+        throw new Error("Failed to send email");
       }
     } catch (error) {
+      console.error("Error sending notification email:", error);
       toast({
-        title: "Error",
-        description: "Failed to send email notification",
-        variant: "destructive",
+        title: "Email notification failed",
+        description: "Could not send status update email to customer",
+        variant: "destructive"
       });
     } finally {
-      setIsSendingEmail(false);
+      setIsSendingNotification(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-start justify-center pt-10 pb-10 overflow-y-auto">
-      <div className="relative bg-background rounded-lg shadow-lg border max-w-4xl w-full mx-4">
-        <div className="sticky top-0 z-20 bg-background rounded-t-lg border-b flex items-center justify-between p-4">
-          <div>
-            <h2 className="text-xl font-semibold">Order #{order.id}</h2>
-            <p className="text-sm text-muted-foreground">
-              {new Date(order.date).toLocaleDateString()} · {order.customer.name} · ₹{(order.total / 100).toFixed(2)}
-            </p>
-          </div>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <XCircle className="h-5 w-5" />
-          </Button>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="p-4">
-          <TabsList className="grid grid-cols-2 md:grid-cols-4 mb-4">
-            <TabsTrigger value="details">Order Details</TabsTrigger>
-            <TabsTrigger value="fulfillment">Fulfillment</TabsTrigger>
-            <TabsTrigger value="customer">Customer</TabsTrigger>
-            <TabsTrigger value="notes">Notes & History</TabsTrigger>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex justify-between items-center">
+            <span>Order #{order.id}</span>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="h-4 w-4" />
+            </Button>
+          </DialogTitle>
+          <DialogDescription>
+            {new Date(order.date || order.createdAt || Date.now()).toLocaleDateString()} | 
+            {order.customer?.name || order.customerName || "Unknown Customer"}
+          </DialogDescription>
+        </DialogHeader>
+        
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="w-full">
+            <TabsTrigger value="details" className="flex-1">Order Details</TabsTrigger>
+            <TabsTrigger value="shipping" className="flex-1">Shipping & Delivery</TabsTrigger>
+            <TabsTrigger value="customer" className="flex-1">Customer Info</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="details" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <TabsContent value="details" className="space-y-4 mt-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-semibold">Status</h3>
+                <OrderStatusHandler 
+                  orderId={order.id} 
+                  firestoreId={order.firestoreId} 
+                  currentStatus={order.status} 
+                  customerEmail={order.customer?.email || order.customerEmail}
+                  customerName={order.customer?.name || order.customerName}
+                  onUpdateStatus={handleUpdateStatus} 
+                />
+              </div>
+              <OrderActions 
+                order={order} 
+                onStatusChange={handleUpdateStatus} 
+                onOrderDelete={handleDeleteOrder} 
+              />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
-                <CardContent className="pt-6 space-y-4">
-                  <div>
-                    <h3 className="font-medium mb-2">Order Status</h3>
-                    <OrderStatusHandler
-                      orderId={order.id}
-                      currentStatus={order.status}
-                      onUpdateStatus={handleStatusUpdate}
-                    />
-                  </div>
-                  <Separator />
-                  <div>
-                    <h3 className="font-medium mb-2">Order Items</h3>
-                    <div className="space-y-2">
-                      {order.items.map((item, index) => (
-                        <div key={index} className="flex justify-between items-center">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-1">
+                    <Package className="h-4 w-4" /> Items
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="divide-y">
+                    {order.items?.map((item, idx) => (
+                      <li key={idx} className="py-2">
+                        <div className="flex justify-between">
                           <div>
                             <p className="font-medium">{item.product.name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {item.variant.size}, {item.variant.color} (x{item.quantity})
+                              {item.variant.size}, {item.variant.color} × {item.quantity}
                             </p>
                           </div>
                           <p className="font-medium">₹{(item.price / 100).toFixed(2)}</p>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                  <Separator />
-                  <div className="space-y-1">
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-1">
+                    <CreditCard className="h-4 w-4" /> Payment
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
                     <div className="flex justify-between">
-                      <span>Subtotal</span>
+                      <span>Subtotal:</span>
                       <span>₹{(order.subtotal / 100).toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Shipping</span>
+                      <span>Shipping:</span>
                       <span>₹{(order.shipping / 100).toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between font-bold pt-1">
-                      <span>Total</span>
+                    <div className="flex justify-between font-bold pt-2 border-t">
+                      <span>Total:</span>
                       <span>₹{(order.total / 100).toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-sm text-muted-foreground pt-1">
-                      <span>Payment Method</span>
-                      <span>{order.paymentMethod}</span>
+                    <div className="pt-2">
+                      <p className="text-sm">Payment Method: {order.paymentMethod || "Not specified"}</p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6 space-y-4">
-                  <div>
-                    <h3 className="font-medium mb-2">Shipping Address</h3>
-                    <div className="text-sm">
-                      <p>{order.shippingAddress.street}</p>
-                      <p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}</p>
-                      <p>{order.shippingAddress.country}</p>
-                    </div>
-                  </div>
-                  <Separator />
-                  <div>
-                    <h3 className="font-medium mb-2">Billing Address</h3>
-                    <div className="text-sm">
-                      <p>{order.billingAddress.street}</p>
-                      <p>{order.billingAddress.city}, {order.billingAddress.state} {order.billingAddress.zipCode}</p>
-                      <p>{order.billingAddress.country}</p>
-                    </div>
-                  </div>
-                  <Separator />
-                  <div className="flex flex-wrap gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex gap-1 items-center"
-                      onClick={handleGenerateLabel}
-                      disabled={order.shippingLabelGenerated}
-                    >
-                      <Printer className="h-4 w-4" />
-                      {order.shippingLabelGenerated ? "Label Generated" : "Generate Label"}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex gap-1 items-center"
-                      onClick={handleInventoryUpdate}
-                      disabled={order.inventoryUpdated}
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                      {order.inventoryUpdated ? "Inventory Updated" : "Update Inventory"}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex gap-1 items-center"
-                      onClick={handleSendNotification}
-                      disabled={isSendingEmail}
-                    >
-                      <Mail className="h-4 w-4" />
-                      {isSendingEmail ? "Sending..." : "Send Notification"}
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex gap-1 items-center"
-                    >
-                      <FileText className="h-4 w-4" />
-                      Print Invoice
-                    </Button>
                   </div>
                 </CardContent>
               </Card>
             </div>
-          </TabsContent>
-          
-          <TabsContent value="fulfillment" className="space-y-4">
+            
             <Card>
-              <CardContent className="pt-6">
-                <OrderFulfillmentTracker 
-                  order={order}
-                  onUpdate={handleFulfillmentUpdate}
+              <CardHeader>
+                <CardTitle className="text-base">Notes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea 
+                  placeholder="Add notes about this order..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
                 />
+                <Button 
+                  className="mt-2"
+                  size="sm"
+                  onClick={() => handleOrderUpdate("notes", notes)}
+                >
+                  Save Notes
+                </Button>
               </CardContent>
             </Card>
-
-            {order.trackingNumber && (
+          </TabsContent>
+          
+          <TabsContent value="shipping" className="space-y-4 mt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card>
-                <CardContent className="pt-6">
-                  <h3 className="font-medium mb-4">Tracking Information</h3>
-                  <div className="space-y-2">
-                    <div>
-                      <Label>Tracking Number</Label>
-                      <div className="text-lg font-mono">{order.trackingNumber}</div>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-1">
+                    <MapPin className="h-4 w-4" /> Shipping Address
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {order.shippingAddress ? (
+                    <div className="space-y-1">
+                      <p>{order.customer?.name || order.customerName || ""}</p>
+                      <p>{order.shippingAddress.street}</p>
+                      <p>{order.shippingAddress.city}, {order.shippingAddress.state} {order.shippingAddress.zipCode}</p>
+                      <p>{order.shippingAddress.country}</p>
                     </div>
-                    <Button variant="outline" className="w-full" onClick={handleGenerateLabel}>
-                      <Printer className="mr-2 h-4 w-4" />
-                      Print Shipping Label
-                    </Button>
+                  ) : (
+                    <p className="text-muted-foreground">No shipping address available</p>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-1">
+                    <Truck className="h-4 w-4" /> Tracking Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div>
+                      <label htmlFor="trackingNumber" className="text-sm font-medium">
+                        Tracking Number
+                      </label>
+                      <div className="flex gap-2 mt-1">
+                        <Input
+                          id="trackingNumber"
+                          value={trackingNumber}
+                          onChange={(e) => setTrackingNumber(e.target.value)}
+                          placeholder="Enter tracking number..."
+                        />
+                        <Button onClick={() => handleOrderUpdate("trackingNumber", trackingNumber)}>
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div className="pt-2 border-t">
+                      <p className="text-sm mb-2">
+                        <span className="font-medium">Fulfillment Status:</span> {order.fulfillmentStatus || "Pending"}
+                      </p>
+                      <p className="text-sm">
+                        <Calendar className="h-4 w-4 inline mr-1" />
+                        <span className="font-medium">Order Date:</span> {new Date(order.date || order.createdAt || Date.now()).toLocaleDateString()}
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
-            )}
-
+            </div>
+            
             <Card>
-              <CardContent className="pt-6">
-                <h3 className="font-medium mb-4">Email Notifications</h3>
-                {order.lastEmailNotification ? (
-                  <div className="space-y-2">
-                    <p><strong>Last Sent:</strong> {new Date(order.lastEmailNotification.date).toLocaleString()}</p>
-                    <p><strong>Status:</strong> <StatusBadge status={order.lastEmailNotification.status as OrderStatus} /></p>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-1">
+                  <Mail className="h-4 w-4" /> Notification History
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-sm font-medium">Last Notification Status</p>
+                      <p className="text-sm text-muted-foreground">
+                        {order.lastEmailNotification ? 
+                          `${order.lastEmailNotification.status} on ${new Date(order.lastEmailNotification.date).toLocaleString()}` : 
+                          "No notifications sent"}
+                      </p>
+                    </div>
                     <Button 
-                      variant="outline" 
-                      className="w-full mt-2"
-                      onClick={handleSendNotification}
-                      disabled={isSendingEmail}
+                      onClick={handleSendManualNotification} 
+                      disabled={isSendingNotification || !order.customer?.email && !order.customerEmail}
+                      size="sm"
                     >
-                      <Mail className="mr-2 h-4 w-4" />
-                      {isSendingEmail ? "Sending..." : "Send Status Update Email"}
+                      <Send className="h-4 w-4 mr-1" />
+                      {isSendingNotification ? "Sending..." : "Send Notification"}
                     </Button>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-muted-foreground">No notification emails have been sent yet.</p>
-                    <Button 
-                      variant="outline" 
-                      className="w-full"
-                      onClick={handleSendNotification}
-                      disabled={isSendingEmail}
-                    >
-                      <Mail className="mr-2 h-4 w-4" />
-                      {isSendingEmail ? "Sending..." : "Send Initial Notification"}
-                    </Button>
-                  </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
           
-          <TabsContent value="customer" className="space-y-4">
+          <TabsContent value="customer" className="space-y-4 mt-4">
             <Card>
-              <CardContent className="pt-6 space-y-4">
-                <div>
-                  <h3 className="font-medium mb-2">Customer Information</h3>
-                  <div className="space-y-1">
-                    <p><strong>Name:</strong> {order.customer.name}</p>
-                    <p><strong>Email:</strong> {order.customer.email}</p>
-                    <p><strong>Phone:</strong> {order.customer.phone || "Not provided"}</p>
+              <CardHeader>
+                <CardTitle className="text-base">Customer Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm font-medium">Name</p>
+                    <p>{order.customer?.name || order.customerName || "Unknown"}</p>
                   </div>
-                </div>
-                <Separator />
-                <div>
-                  <h3 className="font-medium mb-2">Customer History</h3>
-                  {order.customer.purchaseCount ? (
-                    <div className="space-y-1">
-                      <p><strong>Total Orders:</strong> {order.customer.purchaseCount}</p>
-                      <p><strong>Customer Since:</strong> {order.customer.joinedDate ? new Date(order.customer.joinedDate).toLocaleDateString() : "Unknown"}</p>
-                      <p><strong>Last Purchase:</strong> {order.customer.lastPurchaseDate ? new Date(order.customer.lastPurchaseDate).toLocaleDateString() : "N/A"}</p>
-                      <p><strong>Lifetime Value:</strong> ₹{order.customer.lifetimeValue ? (order.customer.lifetimeValue / 100).toFixed(2) : "0.00"}</p>
-                      {order.customer.segment && (
-                        <div className="mt-2">
-                          <p className="text-sm font-medium">Customer Segment</p>
-                          <div className="mt-1">
-                            {order.customer.segment === "new" && (
-                              <Badge variant="info">
-                                New Customer
-                              </Badge>
-                            )}
-                            {order.customer.segment === "regular" && (
-                              <Badge variant="success">
-                                Regular Customer
-                              </Badge>
-                            )}
-                            {order.customer.segment === "loyal" && (
-                              <Badge variant="warning">
-                                Loyal Customer
-                              </Badge>
-                            )}
-                            {order.customer.segment === "vip" && (
-                              <Badge variant="warning">
-                                VIP Customer
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                  <div>
+                    <p className="text-sm font-medium">Email</p>
+                    <p>{order.customer?.email || order.customerEmail || "Not provided"}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Phone</p>
+                    <p>{order.customer?.phone || "Not provided"}</p>
+                  </div>
+                  {order.userId && (
+                    <div>
+                      <p className="text-sm font-medium">User ID</p>
+                      <p className="font-mono text-sm">{order.userId}</p>
                     </div>
-                  ) : (
-                    <p className="text-muted-foreground">No purchase history available for this customer.</p>
                   )}
                 </div>
               </CardContent>
             </Card>
-          </TabsContent>
-          
-          <TabsContent value="notes" className="space-y-4">
+            
             <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="notes">Order Notes</Label>
-                    <Textarea
-                      id="notes"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      className="min-h-[150px] resize-none mt-1"
-                      placeholder="Add notes about this order..."
-                    />
-                    <div className="flex justify-end mt-2">
-                      <Button 
-                        onClick={handleUpdateNotes} 
-                        disabled={isSaving || notes === order.notes}
-                      >
-                        {isSaving ? "Saving..." : "Save Notes"}
-                      </Button>
-                    </div>
+              <CardHeader>
+                <CardTitle className="text-base">Billing Address</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {order.billingAddress ? (
+                  <div className="space-y-1">
+                    <p>{order.customer?.name || order.customerName || ""}</p>
+                    <p>{order.billingAddress.street}</p>
+                    <p>{order.billingAddress.city}, {order.billingAddress.state} {order.billingAddress.zipCode}</p>
+                    <p>{order.billingAddress.country}</p>
                   </div>
-                  <Separator />
-                  <div>
-                    <h3 className="font-medium mb-2">Order Timeline</h3>
-                    <div className="space-y-4">
-                      <div className="border-l-2 border-border pl-4 relative">
-                        <div className="absolute w-3 h-3 bg-primary rounded-full -left-[7px]"></div>
-                        <p className="font-medium">Order Created</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(order.date).toLocaleString()}
-                        </p>
-                      </div>
-                      
-                      {order.fulfillmentStatus && order.fulfillmentStatus !== "Pending" && (
-                        <div className="border-l-2 border-border pl-4 relative">
-                          <div className="absolute w-3 h-3 bg-primary rounded-full -left-[7px]"></div>
-                          <p className="font-medium">Fulfillment Status: {order.fulfillmentStatus}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {new Date().toLocaleString()}
-                          </p>
-                        </div>
-                      )}
-                      
-                      {order.shippingLabelGenerated && (
-                        <div className="border-l-2 border-border pl-4 relative">
-                          <div className="absolute w-3 h-3 bg-primary rounded-full -left-[7px]"></div>
-                          <p className="font-medium">Shipping Label Generated</p>
-                          <p className="text-sm text-muted-foreground">
-                            Tracking #: {order.trackingNumber}
-                          </p>
-                        </div>
-                      )}
-                      
-                      {order.inventoryUpdated && (
-                        <div className="border-l-2 border-border pl-4 relative">
-                          <div className="absolute w-3 h-3 bg-primary rounded-full -left-[7px]"></div>
-                          <p className="font-medium">Inventory Updated</p>
-                        </div>
-                      )}
-                      
-                      {order.lastEmailNotification && (
-                        <div className="border-l-2 border-border pl-4 relative">
-                          <div className="absolute w-3 h-3 bg-primary rounded-full -left-[7px]"></div>
-                          <p className="font-medium">Notification Email Sent</p>
-                          <p className="text-sm text-muted-foreground">
-                            Status: {order.lastEmailNotification.status}, 
-                            Date: {new Date(order.lastEmailNotification.date).toLocaleString()}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                ) : (
+                  <p className="text-muted-foreground">No billing address available</p>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };

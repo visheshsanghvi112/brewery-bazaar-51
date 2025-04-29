@@ -100,8 +100,16 @@ export const sendReturnStatusUpdateEmail = async (
  * Send order status update notification to customer
  */
 export const sendOrderStatusUpdateEmail = async (
-  order: Order
+  order: any // Using any here since we may pass a partial order object
 ): Promise<{ success: boolean; message: string }> => {
+  const customerEmail = order.customer?.email || order.customerEmail;
+  if (!customerEmail) {
+    console.error("Missing customer email, cannot send notification");
+    return { success: false, message: "Missing customer email address" };
+  }
+
+  const customerName = order.customer?.name || order.customerName || "Customer";
+  
   let subject = "";
   let content = "";
   
@@ -110,7 +118,7 @@ export const sendOrderStatusUpdateEmail = async (
       subject = "Your Order Has Been Shipped";
       content = `
         <h1>Order Shipped</h1>
-        <p>Dear ${order.customer.name},</p>
+        <p>Dear ${customerName},</p>
         <p>Great news! Your order #${order.id} has been shipped and is on its way to you.</p>
         ${order.trackingNumber 
           ? `<p>You can track your package using the following tracking number: ${order.trackingNumber}</p>` 
@@ -124,10 +132,22 @@ export const sendOrderStatusUpdateEmail = async (
       subject = "Your Order Has Been Delivered";
       content = `
         <h1>Order Delivered</h1>
-        <p>Dear ${order.customer.name},</p>
+        <p>Dear ${customerName},</p>
         <p>Your order #${order.id} has been delivered!</p>
         <p>We hope you enjoy your purchase. If there's any issue with your order, please let us know within 7 days.</p>
         <p>Thank you for shopping with us!</p>
+        <p>Best regards,<br>Customer Service Team</p>
+      `;
+      break;
+    case "Cancelled":
+      subject = "Your Order Has Been Cancelled";
+      content = `
+        <h1>Order Cancellation</h1>
+        <p>Dear ${customerName},</p>
+        <p>Your order #${order.id} has been cancelled.</p>
+        <p>If you did not request this cancellation, please contact our customer support team immediately.</p>
+        <p>Any payment made will be refunded within 5-7 business days.</p>
+        <p>Thank you for your understanding.</p>
         <p>Best regards,<br>Customer Service Team</p>
       `;
       break;
@@ -135,7 +155,7 @@ export const sendOrderStatusUpdateEmail = async (
       subject = `Update on Your Order: ${order.status}`;
       content = `
         <h1>Order Update</h1>
-        <p>Dear ${order.customer.name},</p>
+        <p>Dear ${customerName},</p>
         <p>There has been an update to your order #${order.id}.</p>
         <p>Current status: ${order.status}</p>
         <p>If you have any questions, please don't hesitate to contact our customer support team.</p>
@@ -144,5 +164,5 @@ export const sendOrderStatusUpdateEmail = async (
       `;
   }
   
-  return sendEmail(order.customer.email, subject, content);
+  return sendEmail(customerEmail, subject, content);
 };

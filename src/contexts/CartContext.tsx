@@ -1,7 +1,7 @@
 
-import React, { createContext, useContext, useReducer } from 'react';
+import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { Product, ProductVariant, Cart, Order, Address, Customer, OrderStatus, ReturnRequest, ReturnStatus } from '@/types';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { 
   cartReducer, 
@@ -14,7 +14,7 @@ import { CartContextType } from './cart/cartTypes';
 import { createOrder, updateCustomer } from './cart/orderManager';
 import { saveOrder } from '@/lib/firebase/userOperations';
 import { auth, db } from '@/integrations/firebase/client';
-import { doc, getDoc, setDoc, runTransaction, collection, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, runTransaction, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
@@ -25,6 +25,43 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [customers, setCustomers] = useLocalStorage<any[]>("customers", []);
   const [returnRequests, setReturnRequests] = useLocalStorage<ReturnRequest[]>("returnRequests", []);
   
+  // Load user's orders from Firestore when auth state changes
+  useEffect(() => {
+    const fetchUserOrders = async () => {
+      if (auth.currentUser) {
+        try {
+          const userId = auth.currentUser.uid;
+          const ordersRef = collection(db, "orders");
+          const q = query(ordersRef, where("userId", "==", userId));
+          const querySnapshot = await getDocs(q);
+          
+          if (!querySnapshot.empty) {
+            const userOrders = querySnapshot.docs.map(doc => {
+              const data = doc.data();
+              return {
+                ...data,
+                id: data.id || doc.id,
+                firestoreId: doc.id
+              } as Order;
+            });
+            
+            // Merge orders from local storage with orders from Firestore
+            const existingOrderIds = orders.map(o => o.id);
+            const newOrders = userOrders.filter(o => !existingOrderIds.includes(o.id));
+            
+            if (newOrders.length > 0) {
+              setOrders([...orders, ...newOrders]);
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching user orders from Firestore:", error);
+        }
+      }
+    };
+    
+    fetchUserOrders();
+  }, [auth.currentUser]);
+  
   const addItem = (product: Product, variant: ProductVariant, quantity: number) => {
     dispatch({ type: 'ADD_ITEM', payload: { product, variant, quantity } });
     
@@ -32,6 +69,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       title: 'Added to cart',
       description: `${quantity} × ${product.name} (${variant.size}, ${variant.color}) added to cart`,
     });
+    
+    // Optionally sync with Firestore for logged-in users
+    syncCartWithFirestore();
   };
   
   const removeItem = (productId: string, variantId: string) => {
@@ -41,6 +81,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       title: 'Item removed',
       description: 'The item has been removed from your cart',
     });
+    
+    // Optionally sync with Firestore for logged-in users
+    syncCartWithFirestore();
   };
   
   const updateQuantity = (productId: string, variantId: string, quantity: number) => {
@@ -60,14 +103,45 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     
     dispatch({ type: 'UPDATE_QUANTITY', payload: { productId, variantId, quantity } });
+    
+    // Optionally sync with Firestore for logged-in users
+    syncCartWithFirestore();
   };
   
   const setShippingAddress = (address: Address) => {
     dispatch({ type: 'SET_SHIPPING_ADDRESS', payload: address });
+    
+    // Optionally sync with Firestore for logged-in users
+    syncCartWithFirestore();
   };
   
   const setBillingAddress = (address: Address) => {
     dispatch({ type: 'SET_BILLING_ADDRESS', payload: address });
+    
+    // Optionally sync with Firestore for logged-in users
+    syncCartWithFirestore();
+  };
+  
+  // Function to sync cart with Firestore for logged-in users
+  const syncCartWithFirestore = async () => {
+    if (auth.currentUser) {
+      try {
+        const userId = auth.currentUser.uid;
+        const userCartRef = doc(db, "userCarts", userId);
+        
+        await setDoc(userCartRef, {
+          items: state.items,
+          total: state.total,
+          shippingAddress: state.shippingAddress,
+          billingAddress: state.billingAddress,
+          updatedAt: new Date().toISOString()
+        });
+        
+        console.log("Cart synced with Firestore");
+      } catch (error) {
+        console.error("Error syncing cart with Firestore:", error);
+      }
+    }
   };
   
   const placeOrder = async (customer: Customer, paymentMethod: string) => {
@@ -88,6 +162,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       
       const { newOrder, orderId } = await createOrder(state, enhancedCustomer, paymentMethod, orders);
+      
+      // Save order to Firestore (already done in createOrder function)
+      
+      // Link order to user's profile
+      await saveOrder(auth.currentUser.uid, newOrder);
       
       // Save order to local state
       setOrders([...orders, newOrder]);
@@ -148,11 +227,25 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (auth.currentUser) {
         try {
           const returnRef = collection(db, "returnRequests");
-          await addDoc(returnRef, {
+          const docRef = await addDoc(returnRef, {
             ...returnRequest,
             userId: auth.currentUser.uid,
             updatedAt: new Date().toISOString()
           });
+          
+          // Add the Firestore ID to the return request
+          returnRequest.firestoreId = docRef.id;
+          
+          // Also update the order to mark it as having a return request
+          if (order.firestoreId) {
+            const orderRef = doc(db, "orders", order.firestoreId);
+            await setDoc(orderRef, {
+              status: 'Return Requested' as OrderStatus,
+              returnRequest: returnId,
+              updatedAt: new Date().toISOString()
+            }, { merge: true });
+          }
+          
           console.log(`Return request ${returnId} saved to Firestore`);
         } catch (error) {
           console.error("Error saving return request to Firestore:", error);
@@ -192,6 +285,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const clearCart = () => {
     dispatch({ type: 'CLEAR_CART' });
+    
+    // Also clear the cart in Firestore if the user is logged in
+    if (auth.currentUser) {
+      try {
+        const userCartRef = doc(db, "userCarts", auth.currentUser.uid);
+        setDoc(userCartRef, { 
+          items: [],
+          total: 0,
+          updatedAt: new Date().toISOString() 
+        });
+      } catch (error) {
+        console.error("Error clearing cart in Firestore:", error);
+      }
+    }
   };
   
   const itemCount = state.items.reduce((count, item) => count + item.quantity, 0);
