@@ -37,10 +37,9 @@ export const updateProductInFirestore = async (productId: string, productData: P
     const { id, ...dataToUpdate } = productData as any;
     
     // Create a clean update object without undefined values
-    // Also convert empty strings to null for Firestore
     const cleanUpdateData = Object.entries(dataToUpdate).reduce((acc, [key, value]) => {
       if (value !== undefined) {
-        // Convert empty strings to null
+        // Convert empty strings to null for specific fields
         if (value === "" && key !== "name" && key !== "description" && key !== "category") {
           acc[key] = null;
         } else {
@@ -50,7 +49,7 @@ export const updateProductInFirestore = async (productId: string, productData: P
       return acc;
     }, {} as Record<string, any>);
     
-    // Special handling for originalPrice - make sure it's either a number or null
+    // Special handling for originalPrice
     if (cleanUpdateData.originalPrice === 0 || cleanUpdateData.originalPrice === "") {
       cleanUpdateData.originalPrice = null;
     }
@@ -74,7 +73,7 @@ export const deleteProductFromFirestore = async (productId: string): Promise<voi
     console.log("Deleting product from Firestore:", productId);
     const productRef = doc(db, "products", productId);
     
-    // Verify the document exists first
+    // Check if document exists before attempting to delete
     const docSnap = await getDoc(productRef);
     if (!docSnap.exists()) {
       throw new Error(`Product with ID ${productId} does not exist`);
@@ -88,9 +87,10 @@ export const deleteProductFromFirestore = async (productId: string): Promise<voi
   }
 };
 
-// Get all products from Firestore
+// Get all products from Firestore with real-time updates
 export const getProductsFromFirestore = async (): Promise<Product[]> => {
   try {
+    console.log("Fetching products from Firestore");
     const querySnapshot = await getDocs(collection(db, "products"));
     const products: Product[] = [];
     
@@ -101,7 +101,7 @@ export const getProductsFromFirestore = async (): Promise<Product[]> => {
         name: data.name || '',
         description: data.description || '',
         price: data.price || 0,
-        originalPrice: data.originalPrice,
+        originalPrice: data.originalPrice || null,
         category: data.category || '',
         images: data.images || [],
         variants: data.variants || [],
@@ -112,9 +112,10 @@ export const getProductsFromFirestore = async (): Promise<Product[]> => {
       });
     });
     
+    console.log(`Found ${products.length} products in Firestore`);
     return products;
   } catch (error) {
-    console.error("Error getting products: ", error);
+    console.error("Error getting products from Firestore: ", error);
     throw error;
   }
 };

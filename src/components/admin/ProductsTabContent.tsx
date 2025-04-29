@@ -18,6 +18,7 @@ interface ProductsTabContentProps {
   handleAddProduct: () => void;
   handleEditProduct: (product: Product) => void;
   handleDeleteProduct: (productId: string) => void;
+  isLoading?: boolean;
 }
 
 export function ProductsTabContent({
@@ -30,7 +31,8 @@ export function ProductsTabContent({
   setFilterCategory,
   handleAddProduct,
   handleEditProduct,
-  handleDeleteProduct
+  handleDeleteProduct,
+  isLoading = false
 }: ProductsTabContentProps) {
   const fadeIn = {
     hidden: { opacity: 0 },
@@ -59,12 +61,21 @@ export function ProductsTabContent({
         </Button>
       </div>
       
-      <ProductGrid
-        products={filteredProducts}
-        categories={categories}
-        handleEditProduct={handleEditProduct}
-        handleDeleteProduct={handleDeleteProduct}
-      />
+      {isLoading ? (
+        <div className="text-center py-8 bg-muted/30 rounded-lg p-6">
+          <div className="flex flex-col items-center space-y-4">
+            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-muted-foreground">Processing... Please wait</p>
+          </div>
+        </div>
+      ) : (
+        <ProductGrid
+          products={filteredProducts}
+          categories={categories}
+          handleEditProduct={handleEditProduct}
+          handleDeleteProduct={handleDeleteProduct}
+        />
+      )}
     </motion.div>
   );
 }

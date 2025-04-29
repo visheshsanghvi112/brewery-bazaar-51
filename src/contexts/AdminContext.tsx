@@ -79,6 +79,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useLocalStorage<Order[]>("orders", []);
   const [customers, setCustomers] = useLocalStorage<any[]>("customers", []);
+  const [isLoading, setIsLoading] = useState(false);
   
   const [formProduct, setFormProduct] = useState<Partial<Product>>({
     name: "",
@@ -107,24 +108,28 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     return matchesSearch && matchesCategory;
   });
   
-  useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const fetchedProducts = await getProductsFromFirestore();
-        setProducts(fetchedProducts);
-        console.log("Products loaded from Firestore:", fetchedProducts.length);
-      } catch (error) {
-        console.error("Error loading products from Firestore:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load products from database",
-          variant: "destructive",
-        });
-      }
-    };
+  // Load products from Firestore
+  const loadProducts = async () => {
+    try {
+      setIsLoading(true);
+      const fetchedProducts = await getProductsFromFirestore();
+      setProducts(fetchedProducts);
+      console.log("Products loaded from Firestore:", fetchedProducts.length);
+    } catch (error) {
+      console.error("Error loading products from Firestore:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load products from database",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadProducts();
-  }, [toast]);
+  }, []);
 
   const handleAddProduct = () => {
     setEditingProduct(null);
@@ -163,8 +168,12 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   const handleDeleteProduct = async (productId: string) => {
     try {
+      setIsLoading(true);
       await deleteProductFromFirestore(productId);
-      setProducts(products.filter(p => p.id !== productId));
+      
+      // Update local state after successful deletion
+      setProducts(prevProducts => prevProducts.filter(p => p.id !== productId));
+      
       toast({
         title: "Product deleted",
         description: "The product has been successfully removed.",
@@ -173,25 +182,28 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       console.error("Error deleting product:", error);
       toast({
         title: "Error",
-        description: "Failed to delete product. Please try again.",
+        description: "Failed to delete product. Please check your Firebase permissions.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleSaveProduct = async () => {
-    console.log("Saving product with data:", formProduct);
-
-    if (!formProduct.name || !formProduct.price || !formProduct.category) {
-      toast({
-        title: "Missing information",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     try {
+      setIsLoading(true);
+      console.log("Saving product with data:", formProduct);
+
+      if (!formProduct.name || !formProduct.price || !formProduct.category) {
+        toast({
+          title: "Missing information",
+          description: "Please fill in all required fields.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const images = productImageUrls.length > 0 
         ? productImageUrls 
         : ["https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg"];
@@ -211,7 +223,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         console.log("Updating existing product:", editingProduct.id);
         await updateProductInFirestore(editingProduct.id, productToSave);
         
-        setProducts(products.map(p => 
+        // Update local state after successful update
+        setProducts(prevProducts => prevProducts.map(p => 
           p.id === editingProduct.id 
             ? { ...p, ...productToSave, id: editingProduct.id } 
             : p
@@ -230,7 +243,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
           id: newProductId,
         } as Product;
         
-        setProducts([...products, newProduct]);
+        // Update local state after successful addition
+        setProducts(prevProducts => [...prevProducts, newProduct]);
         
         toast({
           title: "Product added",
@@ -239,15 +253,19 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       }
       
       setShowProductForm(false);
-      const updatedProducts = await getProductsFromFirestore();
-      setProducts(updatedProducts);
+      
+      // Reload products to ensure we have the latest data
+      await loadProducts();
+      
     } catch (error) {
       console.error("Error saving product:", error);
       toast({
         title: "Error",
-        description: "Failed to save product. Please try again.",
+        description: "Failed to save product. Please check your Firebase permissions.",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -404,7 +422,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       handleVariantChange,
       handleUpdateOrderStatus,
       handleFileChange,
-      handleRemoveImage
+      handleRemoveImage,
+      isLoading
     }}>
       {children}
     </AdminContext.Provider>

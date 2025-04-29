@@ -29,7 +29,8 @@ export default function AdminProducts() {
     handleRemoveVariant,
     handleVariantChange,
     handleFileChange,
-    handleRemoveImage
+    handleRemoveImage,
+    isLoading
   } = useAdmin();
 
   return (
@@ -46,6 +47,7 @@ export default function AdminProducts() {
         handleAddProduct={handleAddProduct}
         handleEditProduct={handleEditProduct}
         handleDeleteProduct={handleDeleteProduct}
+        isLoading={isLoading}
       />
       
       <ProductFormDialog
