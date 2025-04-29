@@ -248,7 +248,7 @@ export async function getOrders(userId?: string) {
     const querySnapshot = await getDocs(q);
     
     return querySnapshot.docs.map(doc => {
-      // Add type assertion to doc.data() to ensure TypeScript treats it as an object
+      // Add explicit type assertion to doc.data() to ensure TypeScript recognizes it as an object
       const data = doc.data() as Record<string, unknown>;
       
       return {
