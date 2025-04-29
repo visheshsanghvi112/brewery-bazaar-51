@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "@/contexts/CartContext";
@@ -33,6 +32,7 @@ import { StatusBadge } from "@/components/admin/StatusBadge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle } from "lucide-react";
+import { auth } from "@/integrations/firebase/client";
 
 export default function Returns() {
   const { orders, requestReturn, returnRequests } = useCart();
@@ -79,6 +79,15 @@ export default function Returns() {
   };
 
   const handleInitiateReturn = () => {
+    if (!auth.currentUser) {
+      toast({
+        title: 'Authentication required',
+        description: 'Please login to request a return',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     if (!selectedOrder || selectedItems.length === 0) {
       toast({
         title: "Error",
