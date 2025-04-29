@@ -1,4 +1,3 @@
-
 // Product Types
 export interface Product {
   id: string;
@@ -126,6 +125,13 @@ export interface Order {
     status: string;
     date: string;
   };
+  // Firebase-specific fields
+  firestoreId?: string;
+  userId?: string;
+  customerName?: string;
+  customerEmail?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Enhanced Return Request Type

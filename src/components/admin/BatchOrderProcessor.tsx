@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { db } from "@/integrations/firebase/client";
+import { doc, updateDoc } from "firebase/firestore";
 
 interface BatchOrderProcessorProps {
   orders: any[];
@@ -38,9 +40,36 @@ export const BatchOrderProcessor = ({ orders, onBatchProcess, isProcessing = fal
     });
   };
 
-  const handleAction = (action: string, value?: string) => {
+  const handleAction = async (action: string, value?: string) => {
     if (selectedOrders.length > 0 && !isProcessing) {
-      onBatchProcess(selectedOrders, action, value);
+      // Execute the action in Firestore before updating the UI
+      if (action === "updateStatus" && value) {
+        try {
+          // Update each selected order in Firebase
+          const updatePromises = selectedOrders.map(orderId => {
+            const order = orders.find(o => o.id === orderId);
+            if (order && order.firestoreId) {
+              const orderRef = doc(db, "orders", order.firestoreId);
+              return updateDoc(orderRef, {
+                status: value,
+                updatedAt: new Date().toISOString()
+              });
+            }
+            return Promise.resolve();
+          });
+          
+          // Wait for all updates to complete
+          await Promise.all(updatePromises);
+          
+          // Now update the UI through the provided callback
+          onBatchProcess(selectedOrders, action, value);
+        } catch (error) {
+          console.error("Error updating orders in Firestore:", error);
+        }
+      } else {
+        // For other actions that don't directly impact Firestore
+        onBatchProcess(selectedOrders, action, value);
+      }
     }
   };
 
@@ -122,7 +151,7 @@ export const BatchOrderProcessor = ({ orders, onBatchProcess, isProcessing = fal
               <div className="flex flex-col">
                 <span className="text-sm font-medium">#{order.id}</span>
                 <span className="text-xs text-muted-foreground">
-                  {order.customer?.name || order.customerName || "Unknown customer"}
+                  {order.customerName || order.customer?.name || "Unknown customer"}
                 </span>
               </div>
               <Badge variant={

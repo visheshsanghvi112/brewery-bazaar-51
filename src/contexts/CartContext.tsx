@@ -89,10 +89,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const { newOrder, orderId } = await createOrder(state, enhancedCustomer, paymentMethod, orders);
       
-      // Save order using Firebase operation
-      await saveOrder(auth.currentUser.uid, newOrder);
-      
-      // Also save to local storage for now (can be removed later if not needed)
+      // Save order to local state
       setOrders([...orders, newOrder]);
       
       // Update customer information

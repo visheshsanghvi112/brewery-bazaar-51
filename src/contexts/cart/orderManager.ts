@@ -85,24 +85,27 @@ export const createOrder = async (
     total,
     status: 'Processing' as OrderStatus,
     date: new Date().toISOString(),
-    paymentMethod
+    paymentMethod,
+    // Firebase-specific fields
+    customerName: customer.name,
+    customerEmail: customer.email,
+    userId: customer.id.startsWith('cust-') ? null : customer.id,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   };
   
   // Save the order to Firestore "orders" collection
   try {
     const orderRef = collection(db, "orders");
-    await addDoc(orderRef, {
-      ...newOrder,
-      customerId: customer.id, // Add customer reference
-      customerName: customer.name,
-      customerEmail: customer.email,
-      userId: customer.id.startsWith('cust-') ? null : customer.id, // Link to user if ID isn't temporary
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    });
-    console.log(`Order ${orderId} saved to Firestore orders collection`);
+    const docRef = await addDoc(orderRef, newOrder);
+    
+    // Store the Firestore document ID
+    newOrder.firestoreId = docRef.id;
+    
+    console.log(`Order ${orderId} saved to Firestore orders collection. Firestore ID: ${docRef.id}`);
   } catch (error) {
     console.error("Error saving order to Firestore:", error);
+    throw error;
   }
   
   return { newOrder, orderId };

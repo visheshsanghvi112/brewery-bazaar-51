@@ -24,6 +24,7 @@ export interface UserProfile {
     priceAlerts: boolean;
   };
   wishlist?: string[]; // Array of product IDs
+  role?: 'user' | 'admin'; // Added role field
 }
 
 export interface UserOrder extends Order {
@@ -63,9 +64,16 @@ export const updateUserProfile = async (userId: string, data: Partial<UserProfil
     const docSnap = await getDoc(userRef);
     
     if (docSnap.exists()) {
-      await updateDoc(userRef, data);
+      await updateDoc(userRef, {
+        ...data,
+        updatedAt: new Date().toISOString()
+      });
     } else {
-      await setDoc(userRef, data);
+      await setDoc(userRef, {
+        ...data,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
     }
   } catch (error) {
     console.error("Error updating user profile:", error);
@@ -75,18 +83,31 @@ export const updateUserProfile = async (userId: string, data: Partial<UserProfil
 
 export const saveOrder = async (userId: string, order: Order): Promise<string> => {
   try {
-    const userOrder: UserOrder = {
-      ...order,
-      userId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    const ordersCollection = collection(db, "orders");
-    const docRef = await addDoc(ordersCollection, userOrder);
-    return docRef.id;
+    // The order should already have been created in the orders collection
+    // Here we're just ensuring it's linked to the user's profile
+    const userRef = doc(db, "users", userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (userDoc.exists()) {
+      // Add the order ID to the user's orders array
+      await updateDoc(userRef, {
+        orderIds: arrayUnion(order.id),
+        updatedAt: new Date().toISOString()
+      });
+    } else {
+      // If the user document doesn't exist yet, create it with this order
+      await setDoc(userRef, {
+        email: auth.currentUser?.email || '',
+        displayName: auth.currentUser?.displayName || '',
+        orderIds: [order.id],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }
+    
+    return order.id;
   } catch (error) {
-    console.error("Error saving order:", error);
+    console.error("Error saving order reference to user:", error);
     throw error;
   }
 };
@@ -97,19 +118,23 @@ export const getUserOrders = async (userId: string): Promise<UserOrder[]> => {
     const q = query(ordersCollection, where("userId", "==", userId));
     const querySnapshot = await getDocs(q);
     
-    return querySnapshot.docs.map(doc => ({
-      ...(doc.data() as UserOrder),
-      id: doc.id
-    }));
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        ...data,
+        id: data.id || doc.id,
+        firestoreId: doc.id
+      } as UserOrder;
+    });
   } catch (error) {
     console.error("Error fetching user orders:", error);
     throw error;
   }
 };
 
-export const updateOrderStatus = async (orderId: string, status: OrderStatus): Promise<void> => {
+export const updateOrderStatus = async (firestoreId: string, status: OrderStatus): Promise<void> => {
   try {
-    const orderRef = doc(db, "orders", orderId);
+    const orderRef = doc(db, "orders", firestoreId);
     await updateDoc(orderRef, {
       status,
       updatedAt: new Date().toISOString()
@@ -132,11 +157,14 @@ export const addToWishlist = async (userId: string, productId: string): Promise<
         wishlist: [productId],
         email: auth.currentUser?.email || '',
         displayName: auth.currentUser?.displayName || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       });
     } else {
       // Update existing user document
       await updateDoc(userRef, {
-        wishlist: arrayUnion(productId)
+        wishlist: arrayUnion(productId),
+        updatedAt: new Date().toISOString()
       });
     }
     console.log(`Product ${productId} added to wishlist for user ${userId}`);
@@ -150,7 +178,8 @@ export const removeFromWishlist = async (userId: string, productId: string): Pro
   try {
     const userRef = doc(db, "users", userId);
     await updateDoc(userRef, {
-      wishlist: arrayRemove(productId)
+      wishlist: arrayRemove(productId),
+      updatedAt: new Date().toISOString()
     });
     console.log(`Product ${productId} removed from wishlist for user ${userId}`);
   } catch (error) {
@@ -174,7 +203,10 @@ export const getWishlist = async (userId: string): Promise<Product[]> => {
     if (!userData.wishlist) {
       console.log(`Wishlist not found for user ${userId}, initializing empty wishlist`);
       // Initialize wishlist if it doesn't exist
-      await updateDoc(userRef, { wishlist: [] });
+      await updateDoc(userRef, { 
+        wishlist: [],
+        updatedAt: new Date().toISOString()
+      });
       return [];
     }
     
@@ -217,7 +249,8 @@ export const updateNotificationPreferences = async (userId: string, preferences:
   try {
     const userRef = doc(db, "users", userId);
     await updateDoc(userRef, {
-      notificationPreferences: preferences
+      notificationPreferences: preferences,
+      updatedAt: new Date().toISOString()
     });
   } catch (error) {
     console.error("Error updating notification preferences:", error);
@@ -320,5 +353,23 @@ export const getUserReviews = async (userId: string): Promise<UserReview[]> => {
   } catch (error) {
     console.error("Error fetching user reviews:", error);
     throw error;
+  }
+};
+
+// Check if a user is an admin
+export const checkUserAdminStatus = async (userId: string): Promise<boolean> => {
+  try {
+    const userRef = doc(db, "users", userId);
+    const userSnap = await getDoc(userRef);
+    
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      return userData.role === 'admin';
+    }
+    
+    return false;
+  } catch (error) {
+    console.error("Error checking admin status:", error);
+    return false;
   }
 };

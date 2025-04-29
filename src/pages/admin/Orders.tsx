@@ -27,11 +27,38 @@ export default function AdminOrders() {
         
         const fetchedOrders = querySnapshot.docs.map(doc => {
           const data = doc.data();
-          return {
-            ...data,
+          
+          // Ensure the order has all required fields for the Order type
+          const order: Order = {
             id: data.id || doc.id,
-            firestoreId: doc.id // Store the Firestore document ID
-          } as Order;
+            customer: data.customer || {
+              id: data.userId || '',
+              name: data.customerName || 'Unknown',
+              email: data.customerEmail || '',
+              phone: data.customer?.phone || ''
+            },
+            items: data.items || [],
+            shippingAddress: data.shippingAddress || {
+              street: '', city: '', state: '', zipCode: '', country: 'India'
+            },
+            billingAddress: data.billingAddress || {
+              street: '', city: '', state: '', zipCode: '', country: 'India'
+            },
+            subtotal: data.subtotal || 0,
+            shipping: data.shipping || 0,
+            total: data.total || 0,
+            status: data.status || 'Processing',
+            date: data.date || data.createdAt || new Date().toISOString(),
+            paymentMethod: data.paymentMethod || '',
+            userId: data.userId,
+            customerName: data.customerName,
+            customerEmail: data.customerEmail,
+            createdAt: data.createdAt,
+            updatedAt: data.updatedAt,
+            firestoreId: doc.id
+          };
+          
+          return order;
         });
         
         setOrders(fetchedOrders);
