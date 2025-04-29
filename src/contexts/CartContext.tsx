@@ -11,7 +11,7 @@ import {
 } from './cart/cartReducer';
 import { CartContextType } from './cart/cartTypes';
 import { createOrder, updateCustomer } from './cart/orderManager';
-import { saveOrder } from '@/lib/firebase/userOperations';
+import { saveOrder } from '@/lib/firebase/collections';
 import { auth, db } from '@/integrations/firebase/client';
 import { doc, getDoc, setDoc, runTransaction, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { 
@@ -220,7 +220,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const { newOrder, orderId } = await createOrder(state, enhancedCustomer, paymentMethod, orders);
       
-      // Save order to Firestore (already done in createOrder function)
+      // Save order to Firestore
+      await saveOrder({
+        ...newOrder,
+        userId: auth.currentUser.uid,
+      });
       
       // Link order to user's profile
       await saveOrder(auth.currentUser.uid, newOrder);
