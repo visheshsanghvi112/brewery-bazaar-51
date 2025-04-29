@@ -226,9 +226,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         userId: auth.currentUser.uid,
       });
       
-      // Link order to user's profile
-      await saveOrder(auth.currentUser.uid, newOrder);
-      
       // Save order to local state
       setOrders([...orders, newOrder]);
       
