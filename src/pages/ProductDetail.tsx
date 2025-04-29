@@ -2,7 +2,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Star, Truck, ShieldCheck, Package } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCart } from "@/contexts/CartContext";
 import { useProductDetail } from "@/hooks/use-product-detail";
@@ -86,8 +86,26 @@ export default function ProductDetail() {
     // Add to cart using context
     addItem(product, selectedVariant, quantity);
     
-    // Navigate to cart
-    navigate("/cart");
+    toast({
+      title: "Added to cart",
+      description: `${product.name} (${selectedSize}, ${selectedColor}) added to your cart`,
+    });
+  };
+  
+  // Format stock status
+  const formatStockStatus = () => {
+    if (!selectedVariant) return "Select options";
+    if (selectedVariant.stock > 10) return "In Stock";
+    if (selectedVariant.stock > 0) return `Only ${selectedVariant.stock} left`;
+    return "Out of Stock";
+  };
+  
+  // Get stock status color
+  const getStockStatusColor = () => {
+    if (!selectedVariant) return "text-gray-500";
+    if (selectedVariant.stock > 10) return "text-green-600";
+    if (selectedVariant.stock > 0) return "text-amber-500";
+    return "text-red-600";
   };
   
   return (
@@ -122,19 +140,52 @@ export default function ProductDetail() {
             description={product.description}
           />
           
-          <ProductVariants 
-            variants={product.variants} 
-            onVariantChange={handleVariantChange} 
-          />
+          {/* Stock Status */}
+          <div className="flex items-center">
+            <span className="text-sm mr-2">Availability:</span>
+            <span className={`text-sm font-medium ${getStockStatusColor()}`}>
+              {formatStockStatus()}
+            </span>
+          </div>
           
-          <ProductQuantity 
-            quantity={quantity}
-            stock={selectedVariant?.stock}
-            onDecrease={decreaseQuantity}
-            onIncrease={increaseQuantity}
-          />
+          <div className="border-t border-gray-200 pt-4">
+            <ProductVariants 
+              variants={product.variants} 
+              onVariantChange={handleVariantChange} 
+            />
+            
+            <ProductQuantity 
+              quantity={quantity}
+              stock={selectedVariant?.stock}
+              onDecrease={decreaseQuantity}
+              onIncrease={increaseQuantity}
+            />
+          </div>
           
-          <ProductShippingInfo />
+          {/* Enhanced Shipping & Benefits Section */}
+          <div className="border rounded-md p-4 space-y-3 bg-muted/30">
+            <div className="flex items-center">
+              <Truck className="h-4 w-4 mr-2 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Free shipping</p>
+                <p className="text-xs text-muted-foreground">On orders above ₹899</p>
+              </div>
+            </div>
+            <div className="flex items-center">
+              <Package className="h-4 w-4 mr-2 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Easy returns</p>
+                <p className="text-xs text-muted-foreground">30-day return policy</p>
+              </div>
+            </div>
+            <div className="flex items-center">
+              <ShieldCheck className="h-4 w-4 mr-2 text-primary" />
+              <div>
+                <p className="text-sm font-medium">Secure checkout</p>
+                <p className="text-xs text-muted-foreground">Encrypted payment processing</p>
+              </div>
+            </div>
+          </div>
           
           <ProductActions 
             product={product}
@@ -143,6 +194,62 @@ export default function ProductDetail() {
             onAddToCart={handleAddToCart}
           />
         </motion.div>
+      </div>
+      
+      {/* Product Details Sections */}
+      <div className="mt-12 border-t border-gray-200 pt-8">
+        <div className="space-y-8">
+          {/* Description Section */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Product Details</h2>
+            <div className="prose prose-sm max-w-none">
+              <p className="whitespace-pre-line">{product.description}</p>
+              
+              {/* Additional product details if available */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <h3 className="font-medium">Features:</h3>
+                  <ul className="list-disc pl-5 mt-2 text-sm text-muted-foreground">
+                    <li>Premium quality material</li>
+                    <li>Comfortable fit</li>
+                    <li>Durable and long-lasting</li>
+                    <li>Easy to maintain</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-medium">Care Instructions:</h3>
+                  <ul className="list-disc pl-5 mt-2 text-sm text-muted-foreground">
+                    <li>Machine wash cold</li>
+                    <li>Do not bleach</li>
+                    <li>Tumble dry low</li>
+                    <li>Iron on low heat if needed</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Rating and Reviews Section */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Ratings & Reviews</h2>
+            <div className="flex items-center mb-2">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Star
+                  key={i}
+                  className={`h-5 w-5 ${
+                    i < Math.floor(product.rating)
+                      ? "text-yellow-500 fill-yellow-500"
+                      : "text-gray-300"
+                  }`}
+                />
+              ))}
+              <span className="ml-2 text-sm font-medium">{product.rating.toFixed(1)}</span>
+              <span className="ml-1 text-sm text-muted-foreground">
+                ({product.reviews} {product.reviews === 1 ? "review" : "reviews"})
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
       
       {/* Reviews Section */}

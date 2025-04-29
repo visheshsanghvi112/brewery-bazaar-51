@@ -1,8 +1,5 @@
 
-import React from "react";
-import { motion } from "framer-motion";
-import { Star, Share2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { formatPrice } from "@/lib/utils";
 
 interface ProductInfoProps {
   name: string;
@@ -14,74 +11,48 @@ interface ProductInfoProps {
   description: string;
 }
 
-export default function ProductInfo({ 
-  name, 
-  category, 
-  rating, 
-  reviews, 
-  price, 
-  originalPrice, 
-  description 
+export default function ProductInfo({
+  name,
+  category,
+  rating,
+  reviews,
+  price,
+  originalPrice,
+  description
 }: ProductInfoProps) {
-  // Format price for display
-  const formatPrice = (price: number) => {
-    return `₹${(price / 100).toFixed(2)}`;
-  };
-
+  // Calculate discount percentage if original price exists
+  const discountPercentage = originalPrice 
+    ? Math.round(((originalPrice - price) / originalPrice) * 100) 
+    : null;
+  
   return (
-    <div className="space-y-6">
-      {/* Basic Info */}
-      <div className="space-y-2">
-        <div className="text-sm text-muted-foreground uppercase tracking-wider">
-          {category.replace('-', ' ')}
-        </div>
-        <h1 className="text-3xl font-bold">{name}</h1>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center">
-            <div className="flex items-center mr-2">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star
-                  key={i}
-                  className={`h-4 w-4 ${
-                    i < Math.floor(rating)
-                      ? "text-yellow-500 fill-yellow-500"
-                      : "text-muted-foreground"
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="text-sm text-muted-foreground">
-              {rating} ({reviews} reviews)
-            </span>
-          </div>
-          <Button variant="ghost" size="sm" className="p-0 h-auto">
-            <Share2 className="h-4 w-4 mr-1" />
-            <span className="text-sm">Share</span>
-          </Button>
-        </div>
-        <div className="flex items-center gap-2 pt-2">
+    <div>
+      <h1 className="text-3xl font-bold mb-2">{name}</h1>
+      <div className="text-sm text-muted-foreground mb-4 capitalize">
+        {category.replace("-", " ")}
+      </div>
+      
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 mb-4">
+        <div className="flex items-baseline gap-2">
           <span className="text-2xl font-bold">
             {formatPrice(price)}
           </span>
-          {originalPrice && (
+          {originalPrice && originalPrice > price && (
             <span className="text-muted-foreground line-through">
               {formatPrice(originalPrice)}
             </span>
           )}
-          {originalPrice && (
-            <span className="bg-black text-white text-xs font-medium px-2 py-1 rounded">
-              Save {Math.round(((originalPrice - price) / originalPrice) * 100)}%
-            </span>
-          )}
         </div>
+        
+        {discountPercentage && discountPercentage > 0 && (
+          <span className="text-sm font-medium text-green-600 bg-green-100 px-2 py-1 rounded-md">
+            Save {discountPercentage}%
+          </span>
+        )}
       </div>
-
-      {/* Product Description */}
-      <div className="pt-6 border-t">
-        <h3 className="font-medium mb-2">Description</h3>
-        <p className="text-muted-foreground">
-          {description}
-        </p>
+      
+      <div className="text-sm text-muted-foreground mb-6 line-clamp-3">
+        {description}
       </div>
     </div>
   );
