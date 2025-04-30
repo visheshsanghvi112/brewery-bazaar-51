@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { EnhancedProductsTabContent } from "@/components/admin/EnhancedProductsTabContent";
 import { ProductFormDialog } from "@/components/admin/ProductFormDialog";
 import { useAdmin } from "@/contexts/AdminContext";

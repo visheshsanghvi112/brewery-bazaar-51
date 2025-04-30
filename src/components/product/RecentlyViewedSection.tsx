@@ -4,6 +4,7 @@ import { Product } from '@/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ProductCard from './ProductCard';
 import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface RecentlyViewedSectionProps {
   currentProductId?: string;
@@ -13,6 +14,7 @@ interface RecentlyViewedSectionProps {
 export function RecentlyViewedSection({ currentProductId, products }: RecentlyViewedSectionProps) {
   const [recentlyViewed, setRecentlyViewed] = useLocalStorage<string[]>('recently-viewed-products', []);
   const [recentProducts, setRecentProducts] = useState<Product[]>([]);
+  const isMobile = useIsMobile();
   
   // Add current product to recently viewed
   useEffect(() => {
@@ -25,7 +27,7 @@ export function RecentlyViewedSection({ currentProductId, products }: RecentlyVi
         setRecentlyViewed([currentProductId, ...filtered].slice(0, 10));
       }
     }
-  }, [currentProductId, recentlyViewed]);
+  }, [currentProductId, recentlyViewed, setRecentlyViewed]);
   
   // Get product details for recently viewed IDs
   useEffect(() => {
@@ -46,7 +48,7 @@ export function RecentlyViewedSection({ currentProductId, products }: RecentlyVi
           {recentProducts.map(product => (
             product.id !== currentProductId && (
               <div key={product.id} className="w-[200px] min-w-[200px]">
-                <ProductCard product={product} />
+                <ProductCard product={product} isMobile={isMobile} />
               </div>
             )
           ))}
