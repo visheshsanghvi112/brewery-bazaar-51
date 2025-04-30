@@ -77,7 +77,7 @@ export default function AdminProducts() {
         newProduct.variants = [];
       }
       
-      // Call handleSaveProduct with the new product data - modified to not pass an argument
+      // Call handleSaveProduct with no arguments since that's what the function expects
       await handleSaveProduct();
       
       toast.success(`Product "${product.name}" duplicated successfully`);

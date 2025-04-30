@@ -11,6 +11,7 @@ import { useState } from "react";
 import { auth } from "@/integrations/firebase/client";
 import { useCart } from "@/contexts/CartContext";
 import { toast } from 'sonner';
+import { CompareButton } from "./CompareButton";
 
 interface EnhancedProductCardProps {
   product: Product;
@@ -95,6 +96,10 @@ export function EnhancedProductCard({ product, isMobile, onQuickView }: Enhanced
                 >
                   <Heart className={`h-4 w-4 ${isInWishlist ? 'fill-current' : ''}`} />
                 </Button>
+                <CompareButton 
+                  product={product} 
+                  className="bg-white/80 backdrop-blur-sm hover:bg-white text-gray-600 hover:text-gray-700"
+                />
                 <Button
                   variant="outline"
                   size="icon"
