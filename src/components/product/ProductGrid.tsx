@@ -47,6 +47,7 @@ export default function ProductGrid({
   );
 
   console.log("ProductGrid received:", filteredProducts.length, "products");
+  console.log("ProductGrid products data:", filteredProducts);
 
   return (
     <motion.div 

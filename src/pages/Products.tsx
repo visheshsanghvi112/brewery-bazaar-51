@@ -24,6 +24,7 @@ export default function Products() {
   const { products, loading, error } = useProducts();
   
   console.log("Products page rendering with", products.length, "products");
+  console.log("Raw products data:", products);
   
   // State for filters and filtered products
   const [filters, setFilters] = useState<FilterState>({
@@ -41,12 +42,20 @@ export default function Products() {
   useEffect(() => {
     try {
       console.log("Filtering products:", products.length);
+      
+      if (products.length === 0) {
+        console.log("No products to filter");
+        setFilteredProducts([]);
+        return;
+      }
+      
       let result = [...products];
       
       if (filters.category) {
         result = result.filter(
           (product) => product.category === filters.category
         );
+        console.log(`After category filter (${filters.category}):`, result.length);
       }
       
       result = result.filter(
@@ -174,7 +183,8 @@ export default function Products() {
           {filters.category 
             ? `${filters.category.replace('-', ' ').charAt(0).toUpperCase() + filters.category.replace('-', ' ').slice(1)}`
             : "All Products"
-          }
+          } 
+          <span className="text-lg text-muted-foreground ml-2">({products.length})</span>
         </motion.h1>
         
         <div className="flex items-center gap-4">
