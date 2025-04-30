@@ -2,8 +2,7 @@
 import { useState, useEffect } from "react";
 import { Product } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { getProductsFromFirestore } from "@/lib/firebase/products";
-import { collection, onSnapshot } from "firebase/firestore";
+import { collection, onSnapshot, query } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
 
 export function useProducts() {
@@ -20,14 +19,16 @@ export function useProducts() {
         setLoading(true);
         setError(null);
         
-        // Get initial products
-        const productsData = await getProductsFromFirestore();
-        setProducts(productsData);
+        console.log("Setting up products listener from Firestore");
         
-        // Set up realtime subscription
+        // Set up realtime subscription to products collection
+        const productsQuery = query(collection(db, "products"));
+        
         unsubscribe = onSnapshot(
-          collection(db, "products"), 
+          productsQuery, 
           (snapshot) => {
+            console.log(`Received snapshot with ${snapshot.docs.length} products`);
+            
             const updatedProducts: Product[] = snapshot.docs.map(doc => ({
               id: doc.id,
               name: doc.data().name || '',
@@ -44,10 +45,13 @@ export function useProducts() {
             }));
             
             setProducts(updatedProducts);
+            setLoading(false);
+            console.log("Products loaded:", updatedProducts.length);
           },
           (error) => {
             console.error("Error listening to product changes:", error);
             setError("Failed to receive product updates");
+            setLoading(false);
             toast({
               title: "Update Error",
               description: "Failed to receive product updates. Please refresh the page.",
@@ -56,15 +60,14 @@ export function useProducts() {
           }
         );
       } catch (error) {
-        console.error('Error fetching products:', error);
+        console.error('Error setting up products listener:', error);
         setError("Failed to load products");
+        setLoading(false);
         toast({
           title: "Error",
           description: "Failed to load products. Please try again.",
           variant: "destructive"
         });
-      } finally {
-        setLoading(false);
       }
     };
     
@@ -72,6 +75,7 @@ export function useProducts() {
 
     return () => {
       if (unsubscribe) {
+        console.log("Unsubscribing from products listener");
         unsubscribe();
       }
     };

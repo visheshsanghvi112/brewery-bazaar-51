@@ -21,7 +21,9 @@ export default function Products() {
   const { toast } = useToast();
 
   // Get products using our custom hook
-  const { products, loading } = useProducts();
+  const { products, loading, error } = useProducts();
+  
+  console.log("Products page rendering with", products.length, "products");
   
   // State for filters and filtered products
   const [filters, setFilters] = useState<FilterState>({
@@ -35,9 +37,10 @@ export default function Products() {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [showFilters, setShowFilters] = useState(!isMobile);
   
-  // Apply filters to show all products
+  // Apply filters whenever products or filters change
   useEffect(() => {
     try {
+      console.log("Filtering products:", products.length);
       let result = [...products];
       
       if (filters.category) {
@@ -65,6 +68,7 @@ export default function Products() {
       }
       
       result = sortProducts(result, sortOption);
+      console.log("Filtered products count:", result.length);
       setFilteredProducts(result);
     } catch (error) {
       console.error('Error filtering products:', error);
@@ -75,6 +79,17 @@ export default function Products() {
       });
     }
   }, [filters, products, sortOption, toast]);
+  
+  // If there's an error, show it
+  useEffect(() => {
+    if (error) {
+      toast({
+        title: "Error",
+        description: error,
+        variant: "destructive"
+      });
+    }
+  }, [error, toast]);
   
   const handleCategoryChange = (category: string | null) => {
     setFilters({ ...filters, category });
