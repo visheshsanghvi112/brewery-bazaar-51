@@ -19,6 +19,7 @@ import { CompareProvider } from "./contexts/CompareContext";
 import { CompareDrawer } from "./components/product/CompareDrawer";
 import CookieConsent from "./components/CookieConsent";
 import { PageLoader } from "./components/PageLoader";
+import Search from "./pages/Search";
 
 function App() {
   const queryClient = new QueryClient();
@@ -39,6 +40,7 @@ function App() {
                     <Route path="/cart" element={<Cart />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/search" element={<Search />} />
                   </Routes>
                 </PageLoader>
                 <CompareDrawer />
