@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { useCompare } from "@/contexts/CompareContext";
 import { Product } from "@/types";
 import { cn } from "@/lib/utils";
-import { LucideIcon } from "lucide-react";
+import { forwardRef } from "react";
+import type { LucideProps } from "lucide-react";
 
 interface CompareButtonProps {
   product: Product;
@@ -12,26 +13,32 @@ interface CompareButtonProps {
   className?: string;
 }
 
-// Create a custom Compare icon as LucideReact doesn't have one built-in
-const Compare: LucideIcon = (props) => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    {...props}
-  >
-    <rect x="3" y="3" width="7" height="7" />
-    <rect x="14" y="3" width="7" height="7" />
-    <rect x="14" y="14" width="7" height="7" />
-    <rect x="3" y="14" width="7" height="7" />
-  </svg>
-);
+// Create a custom Compare icon as a proper Lucide-compatible icon
+const Compare = forwardRef<SVGSVGElement, LucideProps>(function Compare(
+  props, 
+  ref
+) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      ref={ref}
+      {...props}
+    >
+      <rect x="3" y="3" width="7" height="7" />
+      <rect x="14" y="3" width="7" height="7" />
+      <rect x="14" y="14" width="7" height="7" />
+      <rect x="3" y="14" width="7" height="7" />
+    </svg>
+  );
+});
 
 export function CompareButton({ product, variant = "outline", size = "icon", className }: CompareButtonProps) {
   const { addToCompare, removeFromCompare, isInCompare } = useCompare();

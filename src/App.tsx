@@ -17,6 +17,8 @@ import { CartProvider } from "./contexts/CartContext";
 import { AdminProvider } from "./contexts/AdminContext";
 import { CompareProvider } from "./contexts/CompareContext";
 import { CompareDrawer } from "./components/product/CompareDrawer";
+import CookieConsent from "./components/CookieConsent";
+import { PageLoader } from "./components/PageLoader";
 
 function App() {
   const queryClient = new QueryClient();
