@@ -10,12 +10,14 @@ interface ProductGridProps {
   filteredProducts: Product[];
   isMobile: boolean;
   handleCategoryChange: (category: string | null) => void;
+  totalProductCount?: number; // Add optional prop for the total count
 }
 
 export default function ProductGrid({ 
   filteredProducts, 
   isMobile,
-  handleCategoryChange
+  handleCategoryChange,
+  totalProductCount
 }: ProductGridProps) {
   const staggerContainer = {
     hidden: { opacity: 0 },
@@ -61,6 +63,9 @@ export default function ProductGrid({
           <div className="flex justify-between items-center mb-6">
             <p className="text-sm text-muted-foreground">
               Showing {filteredProducts.length} product{filteredProducts.length !== 1 ? 's' : ''}
+              {totalProductCount && totalProductCount > filteredProducts.length && 
+                ` (filtered from ${totalProductCount})`
+              }
             </p>
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="hidden md:flex">

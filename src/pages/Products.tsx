@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { FilterState } from "@/types";
@@ -51,6 +50,7 @@ export default function Products() {
       
       let result = [...products];
       
+      // Check for category filter
       if (filters.category) {
         result = result.filter(
           (product) => product.category === filters.category
@@ -58,26 +58,33 @@ export default function Products() {
         console.log(`After category filter (${filters.category}):`, result.length);
       }
       
+      // Apply price filter
       result = result.filter(
         (product) => 
           product.price >= filters.price[0] &&
           product.price <= filters.price[1]
       );
+      console.log("After price filter:", result.length);
       
+      // Apply size filter if selected
       if (filters.size) {
         result = result.filter((product) =>
           product.variants.some((variant) => variant.size === filters.size)
         );
+        console.log(`After size filter (${filters.size}):`, result.length);
       }
       
+      // Apply color filter if selected  
       if (filters.color) {
         result = result.filter((product) =>
           product.variants.some((variant) => variant.color === filters.color)
         );
+        console.log(`After color filter (${filters.color}):`, result.length);
       }
       
+      // Sort the filtered products
       result = sortProducts(result, sortOption);
-      console.log("Filtered products count:", result.length);
+      console.log("Final filtered products count:", result.length);
       setFilteredProducts(result);
     } catch (error) {
       console.error('Error filtering products:', error);
@@ -231,6 +238,7 @@ export default function Products() {
           filteredProducts={filteredProducts}
           isMobile={isMobile}
           handleCategoryChange={handleCategoryChange}
+          totalProductCount={products.length}
         />
       </div>
     </div>
