@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Product } from "@/types";
 import { useToast } from "@/hooks/use-toast";
-import { collection, onSnapshot, query } from "firebase/firestore";
+import { collection, onSnapshot, query, getDocs } from "firebase/firestore";
 import { db } from "@/integrations/firebase/client";
 
 export function useProducts() {
@@ -21,6 +21,10 @@ export function useProducts() {
         
         console.log("Setting up products listener from Firestore");
         
+        // First, get a count of products for verification
+        const countSnapshot = await getDocs(collection(db, "products"));
+        console.log(`Initial query found ${countSnapshot.docs.length} products in Firestore`);
+        
         // Set up realtime subscription to products collection
         const productsQuery = query(collection(db, "products"));
         
@@ -28,6 +32,11 @@ export function useProducts() {
           productsQuery, 
           (snapshot) => {
             console.log(`Received snapshot with ${snapshot.docs.length} products`);
+            
+            // Log each document ID to help diagnose which ones are coming through
+            snapshot.docs.forEach((doc, index) => {
+              console.log(`Product ${index + 1}: ID=${doc.id}, Name=${doc.data().name}`);
+            });
             
             const updatedProducts: Product[] = snapshot.docs.map(doc => ({
               id: doc.id,

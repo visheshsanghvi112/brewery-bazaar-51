@@ -46,6 +46,8 @@ export default function ProductGrid({
     category => category.slug === "t-shirts" || category.slug === "shorts"
   );
 
+  console.log("ProductGrid received:", filteredProducts.length, "products");
+
   return (
     <motion.div 
       initial="hidden"
