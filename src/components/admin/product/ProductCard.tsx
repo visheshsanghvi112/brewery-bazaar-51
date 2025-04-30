@@ -1,11 +1,21 @@
 
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import React from 'react';
+import { motion } from "framer-motion";
 import { Product } from '@/types';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { useState } from 'react';
-import { Edit, Trash2, Star } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Edit, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ProductCardProps {
   product: Product;
@@ -14,120 +24,138 @@ interface ProductCardProps {
   handleDeleteProduct: (productId: string) => void;
 }
 
-export function ProductCard({ product, categories, handleEditProduct, handleDeleteProduct }: ProductCardProps) {
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+export function ProductCard({
+  product,
+  categories,
+  handleEditProduct,
+  handleDeleteProduct
+}: ProductCardProps) {
+  const itemVariant = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0, 
+      transition: { duration: 0.3 } 
+    }
+  };
   
   const getCategoryName = (slug: string) => {
     const category = categories.find((cat) => cat.slug === slug);
     return category ? category.name : slug;
   };
-  
-  const item = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+
+  const onDeleteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (product && product.id) {
+      console.log("Delete initiated for product ID:", product.id);
+      handleDeleteProduct(product.id);
+    } else {
+      console.error("Cannot delete product: Invalid product ID");
+    }
+  };
+
+  const onEditClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log("Edit initiated for product:", product);
+    handleEditProduct(product);
   };
 
   return (
-    <motion.div variants={item}>
-      <Card className="overflow-hidden h-full flex flex-col hover:shadow-md transition-shadow">
-        <div className="aspect-video relative bg-muted overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent z-10" />
-          {product.images && product.images[0] ? (
-            <img 
-              src={product.images[0]} 
-              alt={product.name} 
-              className="w-full h-full object-cover" 
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center bg-muted text-muted-foreground">
-              No image
-            </div>
-          )}
-          
-          {product.featured && (
-            <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs font-medium px-2 py-1 rounded-full z-20 flex items-center gap-1">
-              <Star className="h-3 w-3" />
-              Featured
-            </div>
-          )}
-          
-          {!product.inStock && (
-            <div className="absolute top-2 left-2 bg-destructive text-destructive-foreground text-xs font-medium px-2 py-1 rounded z-20">
-              Out of Stock
+    <motion.div variants={itemVariant}>
+      <Card className="overflow-hidden h-full flex flex-col">
+        <div className="aspect-square overflow-hidden relative">
+          <img
+            src={product.images?.[0] || "/placeholder.svg"}
+            alt={product.name}
+            className="object-cover w-full h-full transition-transform hover:scale-105"
+            onError={(e) => {
+              (e.target as HTMLImageElement).onerror = null;
+              (e.target as HTMLImageElement).src = "/placeholder.svg";
+            }}
+          />
+          {product.originalPrice && (
+            <div className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
+              Sale
             </div>
           )}
         </div>
         
-        <CardContent className="p-4 flex-1">
-          <div className="flex justify-between items-start mb-1">
-            <h3 className="font-medium text-lg line-clamp-2">{product.name}</h3>
-          </div>
+        <CardContent className="pt-4 flex-1">
+          <h3 className="font-medium line-clamp-1">{product.name}</h3>
           
-          <div className="flex flex-wrap gap-2 mb-2">
-            <div className="text-xs bg-secondary text-secondary-foreground px-2 py-1 rounded-full">
-              {getCategoryName(product.category || '')}
-            </div>
-            <div className="flex items-center text-xs bg-muted px-2 py-1 rounded-full">
-              {product.variants.length} {product.variants.length === 1 ? 'variant' : 'variants'}
-            </div>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <div className="space-y-1">
-              <div className="font-medium text-lg">
+          <div className="flex items-center justify-between mt-1">
+            <div className="flex items-baseline gap-2">
+              <span className="font-semibold">
                 ₹{(product.price / 100).toFixed(2)}
-              </div>
+              </span>
               {product.originalPrice && (
-                <div className="text-muted-foreground text-sm line-through">
+                <span className="text-sm text-muted-foreground line-through">
                   ₹{(product.originalPrice / 100).toFixed(2)}
-                </div>
+                </span>
               )}
             </div>
-            
-            <div className="flex items-center gap-1">
-              <div className="flex">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className={`h-3 w-3 ${i < Math.floor(product.rating) ? "fill-yellow-400 text-yellow-400" : "text-muted"}`} />
-                ))}
+            <span className="text-xs text-muted-foreground">
+              {getCategoryName(product.category)}
+            </span>
+          </div>
+          
+          <div className="mt-2">
+            <p className="text-xs text-muted-foreground line-clamp-2">
+              {product.description || "No description available"}
+            </p>
+          </div>
+          
+          <div className="flex flex-wrap gap-1 mt-2">
+            {product.variants && product.variants.map((variant) => (
+              <div
+                key={variant.id}
+                className="inline-flex items-center border rounded-full px-2 py-0.5 text-xs"
+                style={{
+                  backgroundColor: `${variant.colorCode}30`,
+                  borderColor: `${variant.colorCode}50`
+                }}
+              >
+                {variant.size} / {variant.color}
               </div>
-              <span className="text-xs text-muted-foreground">
-                ({product.reviews})
-              </span>
-            </div>
+            ))}
           </div>
         </CardContent>
         
-        <CardFooter className="p-4 pt-0 gap-2">
-          <Button 
-            onClick={() => handleEditProduct(product)} 
-            variant="outline" 
-            className="flex-1"
+        <CardFooter className="border-t pt-4 flex justify-between">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-1/2"
+            onClick={onEditClick}
           >
-            <Edit className="mr-1 h-4 w-4" /> Edit
+            <Edit className="mr-2 h-4 w-4" /> Edit
           </Button>
           
-          <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" className="flex-1">
-                <Trash2 className="mr-1 h-4 w-4 text-destructive" />
-                <span className="text-destructive">Delete</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-1/2 ml-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Delete
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
                 <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete the product
-                  "{product.name}" and remove it from our servers.
+                  This will permanently delete the product "{product.name}" and cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction 
-                  onClick={() => {
-                    handleDeleteProduct(product.id || '');
-                    setIsDeleteDialogOpen(false);
-                  }}
+                <AlertDialogAction
+                  onClick={onDeleteClick}
                   className="bg-destructive hover:bg-destructive/90"
                 >
                   Delete

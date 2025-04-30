@@ -2,11 +2,11 @@
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 
 interface ProductSortProps {
-  currentSort: string;
   onSort: (value: string) => void;
+  currentSort: string;
 }
 
-export default function ProductSort({ currentSort, onSort }: ProductSortProps) {
+export default function ProductSort({ onSort, currentSort }: ProductSortProps) {
   return (
     <Select value={currentSort} onValueChange={onSort}>
       <SelectTrigger className="w-[180px] bg-card/50 backdrop-blur-sm">

@@ -1,7 +1,8 @@
+
 import { useParams, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Star, Truck, ShieldCheck, Package, ShoppingCart, Heart } from "lucide-react";
+import { ArrowLeft, Star, Truck, ShieldCheck, Package } from "lucide-react";
 import { motion } from "framer-motion";
 import { useCart } from "@/contexts/CartContext";
 import { useProductDetail } from "@/hooks/use-product-detail";
@@ -12,7 +13,6 @@ import ProductQuantity from "@/components/product/ProductQuantity";
 import ProductActions from "@/components/product/ProductActions";
 import ProductShippingInfo from "@/components/product/ProductShippingInfo";
 import Reviews from "@/components/product/Reviews";
-import { CompareButton } from "@/components/product/CompareButton";
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
@@ -108,40 +108,6 @@ export default function ProductDetail() {
     return "text-red-600";
   };
   
-  // Replace the ProductActions component with new one that includes compare button
-  const ProductActionsWithCompare = () => {
-    return (
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
-          <Button 
-            className="w-full" 
-            size="lg"
-            onClick={handleAddToCart}
-            disabled={!selectedVariant || selectedVariant.stock <= 0}
-          >
-            <ShoppingCart className="mr-2 h-5 w-5" />
-            Add to Cart
-          </Button>
-          <CompareButton 
-            product={product} 
-            variant="outline"
-            size="lg"
-            className="md:px-4"
-          />
-        </div>
-        
-        <Button
-          variant="outline"
-          className="w-full" 
-          size="lg"
-        >
-          <Heart className="mr-2 h-5 w-5" />
-          Add to Wishlist
-        </Button>
-      </div>
-    );
-  };
-  
   return (
     <div className="container mx-auto px-4 py-8">
       <Button
@@ -221,16 +187,12 @@ export default function ProductDetail() {
             </div>
           </div>
           
-          {/* Replace this part */}
-          {/* <ProductActions 
+          <ProductActions 
             product={product}
             selectedVariantId={selectedVariant?.id || ''}
             quantity={quantity}
             onAddToCart={handleAddToCart}
-          /> */}
-          
-          {/* With this custom actions section */}
-          <ProductActionsWithCompare />
+          />
         </motion.div>
       </div>
       
