@@ -219,7 +219,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       console.log("Deleting product with ID:", productId);
       setIsLoading(true);
       
-      // Call the Firestore operation directly
+      // First ensure the product exists in our state
+      const productToDelete = products.find(p => p.id === productId);
+      if (!productToDelete) {
+        throw new Error(`Product with ID ${productId} not found in state`);
+      }
+      
+      // Call the Firestore operation directly with explicit error handling
       await deleteProductFromFirestore(productId);
       
       // Update local state after successful deletion
@@ -235,16 +241,13 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         variant: "default", 
       });
       
-      // If there are no products after deletion, reload to make sure we didn't miss any
-      if (products.length <= 1) {
-        console.log("Few or no products left, reloading from Firestore");
-        await loadProducts();
-      }
+      // Reload products from Firestore to ensure state is in sync
+      await loadProducts();
     } catch (error) {
       console.error("Error in handleDeleteProduct:", error);
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to delete product. Check console for details.",
+        description: error instanceof Error ? error.message : "Failed to delete product. Please try again.",
         variant: "destructive",
       });
       
