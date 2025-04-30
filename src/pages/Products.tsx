@@ -6,12 +6,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useProducts } from "@/hooks/use-products";
 import { useToast } from "@/hooks/use-toast";
-import ProductFilter from "@/components/product/ProductFilter";
-import ProductGrid from "@/components/product/ProductGrid";
-import ProductSort from "@/components/product/ProductSort";
+import { AdvancedFilters } from "@/components/product/AdvancedFilters";
+import { EnhancedProductGrid } from "@/components/product/EnhancedProductGrid";
+import { ProductSort } from "@/components/product/ProductSort";
+import { RecentlyViewedSection } from "@/components/product/RecentlyViewedSection";
 import { Filter, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSavedFilters } from "@/hooks/use-saved-filters";
 
 export default function Products() {
   const location = useLocation();
@@ -22,6 +24,9 @@ export default function Products() {
 
   // Get products using our custom hook
   const { products, loading } = useProducts();
+  
+  // Use saved filters
+  const { savedFilters, saveFilter } = useSavedFilters();
   
   // State for filters and filtered products
   const [filters, setFilters] = useState<FilterState>({
@@ -113,6 +118,10 @@ export default function Products() {
     setSortOption(option);
   };
 
+  const handleSaveFilter = (name: string) => {
+    saveFilter(name, filters);
+  };
+
   const sortProducts = (products, option: string) => {
     const productsCopy = [...products];
     
@@ -187,7 +196,7 @@ export default function Products() {
               transition={{ duration: 0.2 }}
               className="w-full lg:w-64"
             >
-              <ProductFilter 
+              <AdvancedFilters 
                 filters={filters}
                 showFilters={showFilters}
                 isMobile={isMobile}
@@ -197,16 +206,21 @@ export default function Products() {
                 onColorChange={handleColorChange}
                 onClearFilters={clearFilters}
                 onToggleFilters={toggleFilters}
+                onSaveFilter={handleSaveFilter}
               />
             </motion.div>
           )}
         </AnimatePresence>
         
-        <ProductGrid 
-          filteredProducts={filteredProducts}
-          isMobile={isMobile}
-          handleCategoryChange={handleCategoryChange}
-        />
+        <div className="flex-1 flex flex-col">
+          <EnhancedProductGrid 
+            filteredProducts={filteredProducts}
+            isMobile={isMobile}
+            handleCategoryChange={handleCategoryChange}
+          />
+          
+          <RecentlyViewedSection />
+        </div>
       </div>
     </div>
   );
