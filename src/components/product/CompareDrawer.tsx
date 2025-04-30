@@ -11,11 +11,32 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { useCompare } from "@/contexts/CompareContext";
-import { Compare, X } from "lucide-react";
+import { X } from "lucide-react";
 import { ProductComparisonTable } from "./ProductComparisonTable";
 import { Badge } from "@/components/ui/badge";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+
+// Create a custom Compare icon
+const Compare = (props: any) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="24"
+    height="24"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="14" y="14" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
+  </svg>
+);
 
 export function CompareDrawer() {
   const { compareItems, compareCount, clearCompare } = useCompare();
