@@ -1,23 +1,13 @@
 
 import React from 'react';
+import { PageLoader as UIPageLoader } from './ui/page-loader';
 
 interface PageLoaderProps {
   children: React.ReactNode;
   loading?: boolean;
 }
 
+// This is just a wrapper around our UI PageLoader for backward compatibility
 export function PageLoader({ children, loading = false }: PageLoaderProps) {
-  // Simple wrapper that contains the children content
-  // You can enhance this with actual loading state logic if needed
-  return (
-    <div className="min-h-screen">
-      {loading ? (
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      ) : (
-        children
-      )}
-    </div>
-  );
+  return <UIPageLoader loading={loading}>{children}</UIPageLoader>;
 }

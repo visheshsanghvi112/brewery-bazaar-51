@@ -18,7 +18,7 @@ import { AdminProvider } from "./contexts/AdminContext";
 import { CompareProvider } from "./contexts/CompareContext";
 import { CompareDrawer } from "./components/product/CompareDrawer";
 import CookieConsent from "./components/CookieConsent";
-import { PageLoader } from "./components/PageLoader";
+import { PageLoader } from "./components/ui/page-loader"; // Changed to use the page-loader from ui folder
 import Search from "./pages/Search";
 
 function App() {
@@ -32,7 +32,7 @@ function App() {
             <CartProvider>
               <CompareProvider>
                 <CookieConsent />
-                <PageLoader>
+                <PageLoader loading={false}>
                   <Routes>
                     <Route path="/" element={<Index />} />
                     <Route path="/products" element={<Products />} />
