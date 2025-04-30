@@ -21,6 +21,18 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
   
   if (!product) return null;
   
+  const handleIncreaseQuantity = () => {
+    setQuantity(prev => Math.min(prev + 1, 10));
+  };
+  
+  const handleDecreaseQuantity = () => {
+    setQuantity(prev => Math.max(prev - 1, 1));
+  };
+  
+  const handleVariantChange = (size: string | null, color: string | null) => {
+    setSelectedVariant({ size, color });
+  };
+  
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[900px]">
@@ -38,23 +50,34 @@ export function QuickViewModal({ product, isOpen, onClose }: QuickViewModalProps
         </DialogHeader>
         
         <div className="grid gap-6 py-4 md:grid-cols-2">
-          <ProductImageGallery product={product} />
+          <ProductImageGallery 
+            images={product.images} 
+            productName={product.name} 
+          />
           
           <div className="space-y-4">
-            <ProductInfo product={product} />
+            <ProductInfo 
+              name={product.name}
+              category={product.category}
+              rating={product.rating}
+              reviews={product.reviews}
+              price={product.price}
+              originalPrice={product.originalPrice}
+              description={product.description}
+            />
             
             {product.variants.length > 0 && (
               <ProductVariants 
-                product={product} 
-                selectedVariant={selectedVariant}
-                onVariantChange={setSelectedVariant}
+                variants={product.variants}
+                onVariantChange={handleVariantChange}
               />
             )}
             
             <ProductQuantity 
-              quantity={quantity} 
-              setQuantity={setQuantity} 
-              max={10}
+              quantity={quantity}
+              stock={10}
+              onDecrease={handleDecreaseQuantity}
+              onIncrease={handleIncreaseQuantity}
             />
             
             <div className="pt-4 flex flex-wrap gap-3">

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Product } from '@/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { ProductCard } from './ProductCard';
+import ProductCard from './ProductCard';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 
 interface RecentlyViewedSectionProps {

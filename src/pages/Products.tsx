@@ -1,19 +1,20 @@
+
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { categories } from "@/lib/data";
 import { Separator } from "@/components/ui/separator";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { ProductGrid } from "@/components/product/ProductGrid";
+import ProductGrid from "@/components/product/ProductGrid";
 import { AdvancedFilters } from "@/components/product/AdvancedFilters";
 import { useProducts } from "@/hooks/use-products";
-import { useMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import ProductSort from "@/components/product/ProductSort";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Products() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { products } = useProducts();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   
   const initialCategory = searchParams.get("category") || null;
@@ -115,7 +116,9 @@ export default function Products() {
     <div className="container py-8">
       <BreadcrumbList>
         <BreadcrumbItem>
-          <BreadcrumbLink to="/">Home</BreadcrumbLink>
+          <BreadcrumbLink asChild>
+            <Link to="/">Home</Link>
+          </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem>
@@ -126,23 +129,33 @@ export default function Products() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <aside className="hidden md:block">
           <AdvancedFilters
-            category={category}
-            categories={categories}
+            filters={{ 
+              category, 
+              price: [priceMin ? parseInt(priceMin) : 10, priceMax ? parseInt(priceMax) : 10000],
+              size: "",
+              color: ""
+            }}
+            showFilters={true}
+            isMobile={isMobile}
             onCategoryChange={handleCategoryChange}
-            priceMin={priceMin}
-            onPriceMinChange={handlePriceMinChange}
-            priceMax={priceMax}
-            onPriceMaxChange={handlePriceMaxChange}
-            rating={rating}
-            onRatingChange={handleRatingChange}
-            onClear={clearFilters}
+            onPriceChange={(values) => {
+              setPriceMin(values[0].toString());
+              setPriceMax(values[1].toString());
+            }}
+            onSizeChange={() => {}}
+            onColorChange={() => {}}
+            onClearFilters={clearFilters}
+            onToggleFilters={() => {}}
           />
         </aside>
         
         <div className="md:col-span-3">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold">Products</h1>
-            <ProductSort sort={sort} onSortChange={handleSortChange} />
+            <ProductSort 
+              currentSort={sort} 
+              onSort={handleSortChange} 
+            />
           </div>
           <Separator className="mb-4" />
           <ProductGrid filteredProducts={filteredProducts} isMobile={isMobile} handleCategoryChange={handleCategoryChange} />
