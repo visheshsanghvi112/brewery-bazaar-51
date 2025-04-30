@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import { Product } from '@/types';
 import { EnhancedSearchFilter } from './EnhancedSearchFilter';
 import { ProductGrid } from './product/ProductGrid';
-import { BulkActions } from './product/BulkActions';
+import { BulkActions } from '@/components/product/BulkActions';
 import { DuplicateModal } from './product/DuplicateModal';
 import { toast } from 'sonner';
 

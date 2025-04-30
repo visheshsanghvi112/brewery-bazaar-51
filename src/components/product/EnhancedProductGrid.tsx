@@ -1,13 +1,13 @@
-
 import { Product } from "@/types";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { categories } from "@/lib/data";
-import { Grid3X3, LayoutList } from "lucide-react";
+import { Grid3X3, LayoutList, Star, Eye } from "lucide-react";
 import { EnhancedProductCard } from "./EnhancedProductCard";
 import { QuickViewModal } from "./QuickViewModal";
 import { useLocalStorage } from "@/hooks/use-local-storage";
+import { Link } from "react-router-dom";
 
 interface EnhancedProductGridProps {
   filteredProducts: Product[];

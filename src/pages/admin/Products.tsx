@@ -78,9 +78,7 @@ export default function AdminProducts() {
       }
       
       // Call handleSaveProduct with the new product data
-      await handleSaveProduct({
-        ...newProduct,
-      });
+      await handleSaveProduct(newProduct);
       
       toast.success(`Product "${product.name}" duplicated successfully`);
     } catch (error) {
