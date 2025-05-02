@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Product } from '@/types';
 import { SearchFilter } from './product/SearchFilter';
 import { ProductGrid } from './product/ProductGrid';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 interface ProductsTabContentProps {
   products: Product[];
@@ -76,8 +77,8 @@ export function ProductsTabContent({
       {isLoading ? (
         <div className="text-center py-12 bg-muted/30 rounded-lg">
           <div className="flex flex-col items-center space-y-4">
-            <div className="h-10 w-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-muted-foreground font-medium">Processing... Please wait</p>
+            <LoadingSpinner variant="beer" size="lg" color="primary" />
+            <p className="text-muted-foreground font-medium">Brewing your products... Please wait</p>
           </div>
         </div>
       ) : filteredProducts.length > 0 ? (

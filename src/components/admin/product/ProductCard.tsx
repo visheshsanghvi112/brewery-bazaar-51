@@ -1,9 +1,11 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { motion } from "framer-motion";
 import { Product } from '@/types';
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Edit, Trash2 } from "lucide-react";
+import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +31,8 @@ export function ProductCard({
   handleEditProduct,
   handleDeleteProduct
 }: ProductCardProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  
   const itemVariant = {
     hidden: { opacity: 0, y: 20 },
     visible: { 
@@ -43,13 +47,18 @@ export function ProductCard({
     return category ? category.name : slug;
   };
 
-  const onDeleteClick = (e: React.MouseEvent) => {
+  const onDeleteClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
     if (product && product.id) {
-      console.log("Delete initiated for product ID:", product.id);
-      handleDeleteProduct(product.id);
+      try {
+        setIsDeleting(true);
+        console.log("Delete initiated for product ID:", product.id);
+        await handleDeleteProduct(product.id);
+      } finally {
+        setIsDeleting(false);
+      }
     } else {
       console.error("Cannot delete product: Invalid product ID");
     }
@@ -130,6 +139,7 @@ export function ProductCard({
             size="sm"
             className="w-1/2"
             onClick={onEditClick}
+            disabled={isDeleting}
           >
             <Edit className="mr-2 h-4 w-4" /> Edit
           </Button>
@@ -140,8 +150,18 @@ export function ProductCard({
                 variant="outline"
                 size="sm"
                 className="w-1/2 ml-2 text-destructive border-destructive/30 hover:bg-destructive/10"
+                disabled={isDeleting}
               >
-                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                {isDeleting ? (
+                  <>
+                    <LoadingSpinner variant="beer" size="sm" color="primary" className="mr-2" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                  </>
+                )}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -152,12 +172,20 @@ export function ProductCard({
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   onClick={onDeleteClick}
                   className="bg-destructive hover:bg-destructive/90"
+                  disabled={isDeleting}
                 >
-                  Delete
+                  {isDeleting ? (
+                    <>
+                      <LoadingSpinner variant="beer" size="sm" color="white" className="mr-2" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete"
+                  )}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
