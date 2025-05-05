@@ -29,3 +29,65 @@ You will also need a **Firebase** account for the admin authentication.
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/visheshsanghvi112/brewery-bazaar-51.git
+
+Navigate to the project folder:
+
+bash
+Copy
+Edit
+cd brewery-bazaar-51
+Install dependencies:
+
+bash
+Copy
+Edit
+npm install
+Set up Firebase:
+
+Create a Firebase project on the Firebase Console.
+
+Set up Firebase Authentication for email/password sign-in.
+
+Follow the instructions in Firebase to get your Firebase config and replace it in your project.
+
+Update Firebase Configuration:
+
+In the project, go to the src/firebaseConfig.ts file.
+
+Replace the placeholders with your actual Firebase credentials.
+
+Running the Project
+Development Mode: To run the project locally in development mode (with hot-reloading):
+
+bash
+Copy
+Edit
+npm run dev
+Build for Production: To create an optimized production build:
+
+bash
+Copy
+Edit
+npm run build
+Firebase Admin Authentication
+The admin panel uses Firebase Authentication to securely log in the admin users.
+
+After setting up Firebase, make sure you add your admin credentials (e.g., email/password) in the Firebase console.
+
+Deployment
+Once you've set up everything, you can deploy the website on any hosting platform. You can host the front-end on platforms like Vercel, Netlify, or any static hosting, and the backend can be deployed separately using Firebase Functions or another back-end server solution.
+
+Technologies Used
+React - For building the front-end.
+
+TypeScript (TSX) - For adding type safety and better code quality.
+
+Firebase Authentication - For handling admin authentication securely.
+
+Firebase Firestore/Realtime Database - For managing the product and order data.
+
+CSS/SCSS - For styling the app and ensuring responsiveness.
+
+Node.js & Express - For handling back-end logic (if applicable).
+
+
