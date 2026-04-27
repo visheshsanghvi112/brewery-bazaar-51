@@ -7,9 +7,12 @@ import {
   where, 
   onSnapshot, 
   deleteDoc, 
-  doc 
+  doc,
+  setDoc,
+  serverTimestamp
 } from "firebase/firestore";
 import { Product } from "@/types";
+import { products as fullCatalog, categories } from "@/lib/data";
 
 // Sample t-shirts and shorts data (shortened for brevity)
 const tshirts = [
@@ -541,36 +544,41 @@ const shorts = [
 export const seedProductsToFirestore = async () => {
   try {
     const productsCollection = collection(db, "products");
+    const categoriesCollection = collection(db, "categories");
     
-    // Check if products already exist
+    // 1. Seed Categories
+    console.log("Seeding categories...");
+    for (const cat of categories) {
+      await setDoc(doc(db, "categories", cat.slug), {
+        ...cat,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
+    
+    // 2. Check if products already exist
     const querySnapshot = await getDocs(productsCollection);
     if (!querySnapshot.empty) {
-      console.log("Products already exist in Firestore");
+      console.log("Products already exist in Firestore, skipping bulk seed");
       return;
     }
     
-    // Add t-shirts
-    for (const tshirt of tshirts) {
+    // 3. Add Full Catalog from data.ts
+    console.log(`Seeding ${fullCatalog.length} products from master catalog...`);
+    for (const product of fullCatalog) {
+      // Remove local ID so Firestore generates a new one
+      const { id, ...productData } = product;
       await addDoc(productsCollection, {
-        ...tshirt,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        ...productData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
     }
     
-    // Add shorts
-    for (const short of shorts) {
-      await addDoc(productsCollection, {
-        ...short,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-    }
-    
-    console.log("Products added to Firestore successfully");
+    console.log("Full catalog seeded to Firestore successfully");
   } catch (error) {
     console.error("Error adding products to Firestore:", error);
-    throw error; // Re-throw to allow caller to handle
+    throw error;
   }
 };
 

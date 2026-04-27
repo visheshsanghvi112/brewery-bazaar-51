@@ -11,21 +11,15 @@ import { seedDefaultShippingMethods } from "./lib/firebase/shippingMethodOperati
 
 // Add reCAPTCHA configuration
 window.recaptchaConfig = {
-  siteKey: '6Le9UhgrAAAAAAQC48yTvrHGktIZPK6Aq1eMGjIw'
+  siteKey: import.meta.env.VITE_RECAPTCHA_SITE_KEY
 };
 
 // Ensure Firebase is initialized
 console.log("Firebase initialized with app:", app.name);
 
-// Initialize products
-seedProductsToFirestore().catch(error => {
-  console.error("Failed to seed products:", error);
-});
-
-// Initialize the seed functions
-// This will initialize the collection data only if they don't already exist
-seedDefaultCategories().catch(console.error);
-seedDefaultShippingMethods().catch(console.error);
+// Seed functions are available in lib/firebase/ files
+// but shouldn't be run automatically on every client initialization
+// to prevent excessive Firestore reads/writes.
 
 // Set up auth state listener
 onAuthStateChanged(auth, async (user) => {
@@ -43,12 +37,8 @@ onAuthStateChanged(auth, async (user) => {
         lastLogin: new Date(),
       }, { merge: true });
       
-      // Check if admin
-      if (user.email === "admin@test.com") {
-        localStorage.setItem("userRole", "admin");
-      } else {
-        localStorage.setItem("userRole", "user");
-      }
+      // Admin logic is now handled in checkUserRole inside Login/App
+      localStorage.setItem("userRole", "user");
     } catch (error) {
       console.error("Error saving user to Firestore:", error);
     }

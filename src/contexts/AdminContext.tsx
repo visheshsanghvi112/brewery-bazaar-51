@@ -9,6 +9,9 @@ import {
   deleteProductFromFirestore,
   getProductsFromFirestore 
 } from "@/lib/firebase/productOperations";
+import { uploadImageToStorage } from "@/lib/firebase/storageOperations";
+import { db } from "@/integrations/firebase/client";
+import { collection, getDocs } from "firebase/firestore";
 
 interface AdminContextType {
   products: Product[];
@@ -51,6 +54,7 @@ interface AdminContextType {
   handleUpdateOrderStatus: (orderId: string, status: OrderStatus) => void;
   handleFileChange: (index: number, file: File | null) => void;
   handleRemoveImage: (index: number) => void;
+  handleAddImageUrl: (url: string) => void;
   isLoading: boolean;
 }
 
@@ -78,8 +82,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [productImageUrls, setProductImageUrls] = useState<string[]>([]);
   
   const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useLocalStorage<Order[]>("orders", []);
-  const [customers, setCustomers] = useLocalStorage<any[]>("customers", []);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
   const [formProduct, setFormProduct] = useState<Partial<Product>>({
@@ -144,10 +148,26 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const loadCustomers = async () => {
+    try {
+      const usersRef = collection(db, "users");
+      // For now, let's just get all users
+      const querySnapshot = await getDocs(usersRef);
+      const customersList = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setCustomers(customersList);
+    } catch (e) {
+      console.error("Error loading customers:", e);
+    }
+  };
+
   // Load products when the component mounts
   useEffect(() => {
-    console.log("AdminProvider mounted - loading products");
+    console.log("AdminProvider mounted - loading products and customers");
     loadProducts();
+    loadCustomers();
     
     // Add a periodic check to ensure we have products
     const intervalId = setInterval(() => {
@@ -294,8 +314,33 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const images = productImageUrls.length > 0 
-        ? productImageUrls 
+      // Upload any actual File objects to Firebase Storage
+      const finalImageUrls = [];
+      const existingUrls = productImageUrls.filter(url => 
+        url && !url.startsWith("blob:") && !url.startsWith("data:")
+      );
+      finalImageUrls.push(...existingUrls);
+
+      for (let i = 0; i < productImages.length; i++) {
+        const file = productImages[i];
+        if (file instanceof File) {
+          try {
+            console.log(`Uploading image ${file.name}...`);
+            const downloadUrl = await uploadImageToStorage(file);
+            finalImageUrls.push(downloadUrl);
+          } catch (err) {
+            console.error("Failed to upload image:", err);
+            toast({
+              title: "Image Upload Failed",
+              description: `Could not upload ${file.name}. It will be skipped.`,
+              variant: "destructive",
+            });
+          }
+        }
+      }
+
+      const images = finalImageUrls.length > 0 
+        ? finalImageUrls 
         : ["https://img.freepik.com/free-photo/black-t-shirt-with-word-ultra-it_1340-37775.jpg"];
 
       const productToSave: Partial<Product> = {
@@ -429,8 +474,8 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       const urls: string[] = [];
       
       for (const fileOrNull of productImages) {
-        if (fileOrNull) {
-          const url = await readFileAsDataURL(fileOrNull);
+        if (fileOrNull instanceof File) {
+          const url = URL.createObjectURL(fileOrNull);
           urls.push(url);
         }
       }
@@ -451,14 +496,6 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     convertFilesToUrls();
   }, [productImages]);
 
-  const readFileAsDataURL = (file: File): Promise<string> => {
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target?.result as string);
-      reader.readAsDataURL(file);
-    });
-  };
-
   const handleRemoveImage = (index: number) => {
     const newUrls = [...productImageUrls];
     newUrls.splice(index, 1);
@@ -478,6 +515,17 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       }
       
       setProductImages(newProductImages);
+    }
+  };
+
+  const handleAddImageUrl = (url: string) => {
+    if (url && url.trim() !== '') {
+      const cleanUrl = url.trim();
+      setProductImageUrls(prev => [...prev, cleanUrl]);
+      setFormProduct(prev => ({
+        ...prev,
+        images: [...(prev.images || []), cleanUrl]
+      }));
     }
   };
 
@@ -516,6 +564,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
       handleUpdateOrderStatus,
       handleFileChange,
       handleRemoveImage,
+      handleAddImageUrl,
       isLoading
     }}>
       {children}

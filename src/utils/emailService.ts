@@ -1,23 +1,49 @@
 
 import { ReturnRequest, Order } from "@/types";
 
+import emailjs from '@emailjs/browser';
+import { Logger } from '@/lib/errorTracker';
+
 /**
- * Simulates sending an email notification (in a real app, this would connect to an email service API)
+ * Sends a transactional email using EmailJS.
+ * Requires env variables VITE_EMAILJS_SERVICE_ID, VITE_EMAILJS_TEMPLATE_ID, VITE_EMAILJS_PUBLIC_KEY
  */
 export const sendEmail = async (
   to: string,
   subject: string,
   content: string
 ): Promise<{ success: boolean; message: string }> => {
-  console.log(`Sending email to: ${to}`);
-  console.log(`Subject: ${subject}`);
-  console.log(`Content: ${content}`);
-  
-  // Simulate network request
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  // In a real app, this would be an actual API call to an email service
-  return { success: true, message: "Email sent successfully" };
+  const serviceId = import.meta.env.VITE_EMAILJS_SERVICE_ID;
+  const templateId = import.meta.env.VITE_EMAILJS_TEMPLATE_ID;
+  const publicKey = import.meta.env.VITE_EMAILJS_PUBLIC_KEY;
+
+  if (!serviceId || !templateId || !publicKey) {
+    Logger.warn("EmailJS credentials missing. Simulated email skipped.", { to, subject });
+    return { success: false, message: "Email service not configured" };
+  }
+
+  try {
+    const templateParams = {
+      to_email: to,
+      subject: subject,
+      message_html: content,
+    };
+
+    const response = await emailjs.send(
+      serviceId,
+      templateId,
+      templateParams,
+      publicKey
+    );
+
+    Logger.info("Email sent successfully", { to, subject, response: response.text });
+    return { success: true, message: "Email sent successfully" };
+  } catch (error) {
+    Logger.error("Failed to send transactional email", { 
+      to, subject, error: String(error) 
+    });
+    return { success: false, message: "Failed to send email" };
+  }
 };
 
 /**
@@ -62,7 +88,7 @@ export const sendReturnStatusUpdateEmail = async (
         <p>Good news! Your return for order #${returnRequest.orderId} has been completed.</p>
         <p>Return ID: ${returnRequest.id}</p>
         ${returnRequest.refundStatus === "Completed" 
-          ? `<p>Your refund of $${(returnRequest.refundAmount! / 100).toFixed(2)} has been processed and should appear on your original payment method within 3-5 business days.</p>` 
+          ? `<p>Your refund of ₹${(returnRequest.refundAmount! / 100).toFixed(2)} has been processed and should appear on your original payment method within 3-5 business days.</p>` 
           : '<p>Your refund is being processed and should be completed shortly.</p>'}
         <p>Thank you for your patience throughout this process.</p>
         <p>Best regards,<br>Customer Service Team</p>

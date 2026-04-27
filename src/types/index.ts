@@ -113,6 +113,9 @@ export interface Order {
   subtotal: number;
   shipping: number;
   total: number;
+  discount?: number;
+  couponCode?: string;
+  transactionId?: string;
   status: OrderStatus;
   date: string;
   paymentMethod: string;
@@ -128,7 +131,7 @@ export interface Order {
   };
   // Firebase-specific fields
   firestoreId?: string;
-  userId?: string;
+  userId?: string | null;
   customerName?: string;
   customerEmail?: string;
   createdAt?: string;

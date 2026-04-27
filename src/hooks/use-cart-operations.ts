@@ -33,6 +33,21 @@ export function useCartOperations(state: CartState, dispatch: React.Dispatch<Car
   };
   
   const addItem = (product: Product, variant: ProductVariant, quantity: number) => {
+    // Check current quantity in cart to prevent overselling
+    const existingItem = state.items.find(
+      (item) => item.productId === product.id && item.variantId === variant.id
+    );
+    const inCartQty = existingItem ? existingItem.quantity : 0;
+
+    if (inCartQty + quantity > variant.stock) {
+      toast({
+        title: "Not enough stock",
+        description: `You already have ${inCartQty} in cart. Total stock available is ${variant.stock}.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     dispatch({ type: 'ADD_ITEM', payload: { product, variant, quantity } });
     
     toast({

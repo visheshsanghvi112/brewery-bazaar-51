@@ -11,6 +11,17 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+
+# Local Firebase diagnostics and seed helpers
+discover-db.js
+force-sync.js
+hardcore-test.js
+rest-test.js
+seed-db.js
+simple-read.js
+test-env.js
 
 # Editor directories and files
 .vscode/*

@@ -45,11 +45,24 @@ export default function Returns() {
   const [adminJustification, setAdminJustification] = useState("");
   const [showAdminDialog, setShowAdminDialog] = useState(false);
 
-  const nonCancelledOrders = orders.filter(order => 
-    order.status !== 'Cancelled' && 
-    order.status !== 'Return Requested' && 
-    order.status !== 'Returned'
-  );
+  // E-commerce Core Logic: Returns are only valid for DELIVERED orders within 30 DAYS
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const nonCancelledOrders = orders.filter(order => {
+    // Admin override: admins can return anything
+    if (isAdmin) {
+      return order.status !== 'Cancelled' && 
+             order.status !== 'Return Requested' && 
+             order.status !== 'Returned';
+    }
+
+    // Standard User Logic: Must be delivered, must not be expired
+    const orderDate = new Date(order.date);
+    const isWithin30Days = orderDate >= thirtyDaysAgo;
+    
+    return order.status === 'Delivered' && isWithin30Days;
+  });
 
   const handleOrderSelect = (orderId: string) => {
     setSelectedOrder(orderId);

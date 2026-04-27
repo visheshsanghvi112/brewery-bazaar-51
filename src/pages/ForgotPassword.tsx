@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { motion } from "framer-motion";
 import { Mail, ArrowLeft } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { auth } from "@/integrations/firebase/client";
+import { sendPasswordResetEmail } from "firebase/auth";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
@@ -37,19 +38,7 @@ const ForgotPassword = () => {
     setIsLoading(true);
     
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      
-      if (error) {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
-      }
+      await sendPasswordResetEmail(auth, values.email);
       
       setEmail(values.email);
       setStep('success');
@@ -57,11 +46,11 @@ const ForgotPassword = () => {
         title: "Email sent!",
         description: "Check your email for a password reset link.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Password reset error:", error);
       toast({
-        title: "Something went wrong",
-        description: "Unable to send reset email. Please try again later.",
+        title: "Error",
+        description: error.message || "Unable to send reset email. Please try again later.",
         variant: "destructive",
       });
     } finally {

@@ -62,8 +62,18 @@ const AdminLogin = () => {
       try {
         // Try to sign in
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        console.log("Admin signed in successfully", userCredential.user.uid);
+        const user = userCredential.user;
+        console.log("Admin signed in successfully", user.uid);
         
+        // Ensure admin document exists in Firestore for security rules
+        const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
+        const { db } = await import("@/integrations/firebase/client");
+        await setDoc(doc(db, "users", user.uid), {
+          email: user.email,
+          role: 'admin',
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+
         // Set admin status directly without checking Firestore
         setAdminStatus(true);
         
@@ -75,43 +85,58 @@ const AdminLogin = () => {
         navigate("/admin");
         return;
       } catch (loginError: any) {
-        console.log("Login error:", loginError.code);
+        console.log("Login attempt failed:", loginError.code);
         
-        // If account doesn't exist, create it
-        if (loginError.code === "auth/user-not-found") {
-          console.log("Admin account not found, creating...");
+        // Modern Firebase: returns 'auth/invalid-credential' for BOTH non-existent users and wrong passwords 
+        // to prevent email enumeration. We must check this to trigger admin registration.
+        if (loginError.code === "auth/user-not-found" || loginError.code === "auth/invalid-credential") {
+          console.log("Admin account possibly missing, checking registration trigger...");
+          
           try {
+            // Attempt to create the user with the same credentials
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-            console.log("Admin account created successfully", userCredential.user.uid);
+            const user = userCredential.user;
+            console.log("New Admin account created successfully:", user.uid);
             
-            // Set admin status directly
+            // Create admin document in Firestore
+            const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
+            const { db } = await import("@/integrations/firebase/client");
+            await setDoc(doc(db, "users", user.uid), {
+              email: user.email,
+              role: 'admin',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+
             setAdminStatus(true);
-            
             toast({
-              title: "Admin Account Created",
-              description: "Your administrator account has been set up successfully.",
+              title: "Admin Initialized",
+              description: "Your administrator account has been set up and persisted to Firestore successfully.",
             });
             
             navigate("/admin");
             return;
           } catch (createError: any) {
-            console.error("Error creating admin account:", createError);
-            toast({
-              title: "Account Creation Failed",
-              description: createError.message,
-              variant: "destructive",
-            });
-            setError(createError.message);
+            // If creation fails, it means the user likely ALREADY exists and the password was JUST wrong
+            if (createError.code === "auth/email-already-in-use") {
+              toast({
+                title: "Login Failed",
+                description: "Incorrect password for the administrator account.",
+                variant: "destructive",
+              });
+              setError("Incorrect password");
+            } else {
+              console.error("Critical Admin Init Error:", createError);
+              setError(createError.message);
+              toast({
+                title: "System Error",
+                description: createError.message,
+                variant: "destructive",
+              });
+            }
           }
-        } else if (loginError.code === "auth/wrong-password" || loginError.code === "auth/invalid-credential") {
-          toast({
-            title: "Incorrect Password",
-            description: "The password you entered is incorrect.",
-            variant: "destructive",
-          });
-          setError("Incorrect password");
         } else {
-          console.error("Authentication error:", loginError);
+          console.error("General Authentication error:", loginError);
           setError(loginError.message);
           toast({
             title: "Authentication failed",

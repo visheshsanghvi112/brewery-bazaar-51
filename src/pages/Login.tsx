@@ -51,25 +51,19 @@ const Login = () => {
 
   const checkUserRole = async (user) => {
     try {
-      if (user.email === "admin@test.com") {
-        console.log("Admin email detected, setting admin status");
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+      
+      if (userSnap.exists() && userSnap.data().role === "admin") {
+        console.log("Admin role detected in Firestore");
         localStorage.setItem("userRole", "admin");
         setAdminStatus(true);
         navigate("/admin");
       } else {
-        const userRef = doc(db, "users", user.uid);
-        const userSnap = await getDoc(userRef);
-        
-        if (userSnap.exists() && userSnap.data().role === "admin") {
-          console.log("Admin role detected in Firestore");
-          localStorage.setItem("userRole", "admin");
-          setAdminStatus(true);
-          navigate("/admin");
-        } else {
-          console.log("Regular user detected");
-          localStorage.setItem("userRole", "user");
-          navigate("/profile");
-        }
+        console.log("Regular user detected");
+        localStorage.setItem("userRole", "user");
+        setAdminStatus(false);
+        navigate("/profile");
       }
     } catch (error) {
       console.error("Error checking user role:", error);
@@ -339,11 +333,6 @@ const Login = () => {
                   </p>
                 </div>
               )}
-              
-              <div className="text-center text-sm text-muted-foreground">
-                Demo credentials:
-                <span className="font-medium text-primary ml-1">admin@test.com / admin</span>
-              </div>
             </CardContent>
           </form>
           <CardFooter className="flex justify-center">

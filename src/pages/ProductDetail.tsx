@@ -13,6 +13,7 @@ import ProductQuantity from "@/components/product/ProductQuantity";
 import ProductActions from "@/components/product/ProductActions";
 import ProductShippingInfo from "@/components/product/ProductShippingInfo";
 import Reviews from "@/components/product/Reviews";
+import RelatedProducts from "@/components/product/RelatedProducts";
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
@@ -254,6 +255,9 @@ export default function ProductDetail() {
       
       {/* Reviews Section */}
       <Reviews productId={id || ''} rating={product.rating} reviewCount={product.reviews} />
+      
+      {/* Dynamic E-Commerce Cross-Selling / Discovery */}
+      <RelatedProducts currentProductId={product.id} category={product.category} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "./StatusBadge";
 import DashboardCharts from "@/components/admin/DashboardCharts";
 import CheckoutIntegration from "@/components/admin/CheckoutIntegration";
+import StoreInitializer from "./StoreInitializer";
 import { ShoppingCart } from "lucide-react";
 import { Order } from "@/types";
 
@@ -15,6 +16,8 @@ interface DashboardTabContentProps {
 export const DashboardTabContent = ({ orders, setActiveTab }: DashboardTabContentProps) => {
   return (
     <div className="space-y-8">
+      <StoreInitializer />
+      
       <DashboardCharts />
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

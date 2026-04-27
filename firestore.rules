@@ -1,0 +1,51 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper function to check if user is an admin
+    function isAdmin() {
+      return request.auth != null && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Products & Categories: Everyone can read, only Admins can write
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Orders: Users can read/write their own, Admins can read/write all
+    match /orders/{orderId} {
+      allow read: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin();
+    }
+
+    // Users: Users can read/write their own profiles, Admins can read/write all
+    match /users/{userId} {
+      allow read, write: if isAdmin() || (request.auth != null && request.auth.uid == userId);
+    }
+    
+    // User Carts: Users can read/write their own, Admins can do anything
+    match /user_carts/{userId} {
+      allow read, write: if isAdmin() || (request.auth != null && request.auth.uid == userId);
+    }
+
+    // Coupons: Admins have full access, everyone else can only read for validation
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    // Sequences: Only Admins can modify
+    match /sequences/{seqId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

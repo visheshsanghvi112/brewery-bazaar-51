@@ -25,7 +25,7 @@ export function useOrderOperations(
 ) {
   const { toast } = useToast();
   
-  const placeOrder = async (customer: Customer, paymentMethod: string) => {
+  const placeOrder = async (customer: Customer, paymentMethod: string, discountAmount: number = 0, couponCode?: string, transactionId?: string) => {
     try {
       if (!auth.currentUser) {
         toast({
@@ -56,7 +56,7 @@ export function useOrderOperations(
       // Save customer details to Firestore
       await saveCustomer(enhancedCustomer);
       
-      const { newOrder, orderId } = await createOrder(state, enhancedCustomer, paymentMethod, orders);
+      const { newOrder, orderId } = await createOrder(state, enhancedCustomer, paymentMethod, orders, discountAmount, couponCode, transactionId);
       
       // Save order to Firestore
       await saveOrder({

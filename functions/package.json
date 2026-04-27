@@ -1,0 +1,13 @@
+{
+  "name": "brewery-bazaar-functions",
+  "description": "Cloud Functions for Brewery Bazaar E-Commerce",
+  "dependencies": {
+    "firebase-admin": "^11.8.0",
+    "firebase-functions": "^4.3.1",
+    "crypto": "^1.0.1"
+  },
+  "engines": {
+    "node": "18"
+  },
+  "main": "index.js"
+}

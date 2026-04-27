@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, ArrowRight } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
@@ -15,6 +16,7 @@ interface CheckoutButtonProps {
 
 const CheckoutButton = ({ disabled = false, total, className }: CheckoutButtonProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const { isAdmin } = useAdmin();
 
@@ -43,8 +45,8 @@ const CheckoutButton = ({ disabled = false, total, className }: CheckoutButtonPr
       return;
     }
 
-    // If user is logged in, proceed to Razorpay payment page
-    window.location.href = "https://rzp.io/rzp/I3iwiEk";
+    // If user is logged in, proceed to Cart page
+    navigate("/cart");
   };
 
   return (

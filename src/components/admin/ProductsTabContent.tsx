@@ -7,6 +7,8 @@ import { Product } from '@/types';
 import { SearchFilter } from './product/SearchFilter';
 import { ProductGrid } from './product/ProductGrid';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { ProductBulkImport } from './ProductBulkImport';
+import StoreInitializer from "./StoreInitializer";
 
 interface ProductsTabContentProps {
   products: Product[];
@@ -47,6 +49,8 @@ export function ProductsTabContent({
       variants={fadeIn}
       className="space-y-6"
     >
+      <StoreInitializer />
+      
       <div className="flex flex-col md:flex-row gap-4 justify-between">
         <SearchFilter
           searchTerm={searchTerm}
@@ -57,6 +61,7 @@ export function ProductsTabContent({
         />
         
         <div className="flex items-center gap-2">
+          <ProductBulkImport onImportComplete={() => window.location.reload()} />
           <Button 
             onClick={handleAddProduct} 
             className="shrink-0"

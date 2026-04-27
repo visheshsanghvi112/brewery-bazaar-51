@@ -42,7 +42,10 @@ export const createOrder = async (
   state: CartState,
   customer: Customer,
   paymentMethod: string,
-  orders: Order[]
+  orders: Order[],
+  discountAmount: number = 0,
+  couponCode?: string,
+  transactionId?: string
 ): Promise<{ newOrder: Order; orderId: string }> => {
   // Get next order sequence
   const sequenceNumber = await getNextSequence("order_sequence");
@@ -51,7 +54,7 @@ export const createOrder = async (
   // Calculate subtotal and shipping
   const subtotal = state.total;
   const shipping = subtotal >= 99900 ? 0 : 10000; // Free shipping for orders above ₹999
-  const total = subtotal + shipping;
+  const total = Math.max(0, subtotal - discountAmount) + shipping;
   
   // Create order items
   const items = state.items.map(item => ({
@@ -82,6 +85,9 @@ export const createOrder = async (
     },
     subtotal,
     shipping,
+    discount: discountAmount,
+    couponCode: couponCode || undefined,
+    transactionId: transactionId,
     total,
     status: 'Processing' as OrderStatus,
     date: new Date().toISOString(),

@@ -258,7 +258,7 @@ export default function Footer() {
             <h4 className="text-lg font-semibold">Company</h4>
             <ul className="space-y-2">
               <li>
-                <Link to="/about-us" className="text-sm text-muted-foreground hover:text-foreground flex items-center group">
+                <Link to="/about" className="text-sm text-muted-foreground hover:text-foreground flex items-center group">
                   <ChevronRight className="h-3 w-3 mr-1 invisible group-hover:visible text-primary transition-all" />
                   About Us
                 </Link>

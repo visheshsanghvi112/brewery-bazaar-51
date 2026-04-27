@@ -10,6 +10,9 @@ import AdminProducts from "./admin/Products";
 import AdminOrders from "./admin/Orders";
 import AdminReturns from "./admin/Returns";
 import AdminCustomers from "./admin/Customers";
+import AdminCoupons from "./admin/Coupons";
+import AdminInventory from "./admin/Inventory";
+import AdminCategories from "./admin/Categories";
 import { AdminProvider } from "@/contexts/AdminContext";
 import { PageLoader } from "@/components/ui/page-loader";
 
@@ -49,6 +52,9 @@ export default function Admin() {
           <Route path="orders" element={<AdminOrders />} />
           <Route path="returns" element={<AdminReturns />} />
           <Route path="customers" element={<AdminCustomers />} />
+          <Route path="coupons" element={<AdminCoupons />} />
+          <Route path="inventory" element={<AdminInventory />} />
+          <Route path="categories" element={<AdminCategories />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </AdminLayout>

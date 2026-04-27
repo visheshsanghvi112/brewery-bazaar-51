@@ -21,6 +21,8 @@ import { AddressAutocomplete } from "@/components/checkout/AddressAutocomplete";
 import { auth } from "@/integrations/firebase/client";
 import { LoginDialog } from "@/components/auth/LoginDialog";
 import { useAdmin } from "@/hooks/use-admin";
+import { updateInventoryAfterOrder } from "@/lib/firebase/inventoryOperations";
+import { validateCoupon } from "@/lib/firebase/couponOperations";
 
 export default function CartPage() {
   const navigate = useNavigate();
@@ -71,6 +73,11 @@ export default function CartPage() {
   
   const [shippingSearchValue, setShippingSearchValue] = useState("");
   const [billingSearchValue, setBillingSearchValue] = useState("");
+  
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   
   useEffect(() => {
     if (step !== "cart" && !auth.currentUser) {
@@ -196,21 +203,153 @@ export default function CartPage() {
     localStorage.setItem("userName", customerInfo.name);
     localStorage.setItem("userEmail", customerInfo.email);
     
-    const orderId = placeOrder(customerInfo, paymentMethod);
+    // Process payment based on method
+    if (paymentMethod === "cod") {
+      processOrderPlacement();
+    } else {
+      // Initialize Razorpay
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY || "rzp_test_YOUR_TEST_KEY_HERE", 
+        amount: total, 
+        currency: "INR",
+        name: "Brewery Bazaar",
+        description: "Order Checkout",
+        handler: function (response: any) {
+          console.log("Razorpay Success Response:", response);
+          processOrderPlacement(response.razorpay_payment_id);
+        },
+        prefill: {
+          name: customerInfo.name,
+          email: customerInfo.email,
+          contact: customerInfo.phone
+        },
+        theme: {
+          color: "#0f172a" // match primary color
+        }
+      };
+      
+      try {
+        const rzp = new (window as any).Razorpay(options);
+        
+        rzp.on('payment.failed', function (response: any){
+          console.error("Payment failed:", response.error);
+          toast({
+            title: "Payment Failed",
+            description: response.error.description || "The payment could not be completed.",
+            variant: "destructive"
+          });
+        });
+        
+        rzp.open();
+      } catch (err) {
+        console.error("Failed to load Razorpay SDK:", err);
+        toast({
+          title: "Payment Gateway Error",
+          description: "Could not initialize the payment gateway. Please try again or use another payment method.",
+          variant: "destructive"
+        });
+      }
+    }
+  };
+
+  const processOrderPlacement = async (transactionId?: string) => {
+    const orderItems = [...cart.items];
+    let orderId: string | null = null;
     
-    if (orderId) {
-      navigate("/");
+    try {
+      const discountAmount = appliedCoupon ? (appliedCoupon.type === 'percent' ? (subtotal * appliedCoupon.value / 100) : (appliedCoupon.value * 100)) : 0;
+      orderId = await placeOrder(customerInfo, paymentMethod, discountAmount, appliedCoupon?.code, transactionId);
+      
+      if (orderId) {
+        // Update inventory
+        try {
+          await updateInventoryAfterOrder(
+            orderItems.map(item => ({
+              productId: item.productId,
+              variantId: item.variantId || 'default',
+              quantity: item.quantity
+            }))
+          );
+          console.log("Inventory updated successfully for order", orderId);
+        } catch (err) {
+          // Robust Fallback Logging: The order succeeded but inventory sync failed.
+          // In a production system, this log alerts admins of stock desync.
+          console.error("CRITICAL E-COMMERCE ALERT: Failed to update inventory during order placement:", err);
+          
+          await import("@/lib/errorTracker").then(({ Logger }) => {
+            Logger.critical("Inventory Desync Post-Order", {
+              orderId, 
+              items: orderItems,
+              error: String(err)
+            });
+          });
+        }
+
+        navigate("/");
+        
+        toast({
+          title: "Order placed successfully",
+          description: `Thank you for your order #${orderId}! We'll process it right away.`,
+        });
+      }
+    } catch (criticalFailure) {
+      // Catch overarching checkout failures and record to cloud logs
+      console.error("CRITICAL CHECKOUT FAILURE:", criticalFailure);
+      await import("@/lib/errorTracker").then(({ Logger }) => {
+        Logger.critical("Checkout Execution Failure", {
+          paymentMethod,
+          transactionId,
+          error: String(criticalFailure)
+        });
+      });
       
       toast({
-        title: "Order placed successfully",
-        description: `Thank you for your order #${orderId}! We'll process it right away.`,
+        title: "Checkout System Error",
+        description: "We encountered a network issue saving your order. Please try again! If payment left your bank, quote your email to support.",
+        variant: "destructive"
       });
     }
   };
   
   const subtotal = cart.total;
   const shipping = subtotal >= 99900 ? 0 : 10000;
-  const total = subtotal + shipping;
+  
+  const discountAmount = appliedCoupon 
+    ? (appliedCoupon.type === 'percent' 
+        ? Math.floor(subtotal * appliedCoupon.value / 100) 
+        : appliedCoupon.value * 100) 
+    : 0;
+
+  const total = Math.max(0, subtotal - discountAmount) + shipping;
+  
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    
+    setIsValidatingCoupon(true);
+    try {
+      const productIds = cart.items.map(i => i.productId);
+      const categories = cart.items.map(i => i.product.category);
+      
+      const res = await validateCoupon(couponCode.trim(), subtotal, productIds, categories);
+      if (res) {
+        setAppliedCoupon(res);
+        toast({
+          title: "Coupon Applied",
+          description: `Applied ${res.code} successfully!`,
+        });
+      } else {
+        toast({
+          title: "Invalid Coupon",
+          description: "This code is invalid, expired, or doesn't meet requirements.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
   
   if (cart.items.length === 0) {
     return (
@@ -626,20 +765,47 @@ export default function CartPage() {
               
               <Separator className="my-4" />
               
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Subtotal</span>
-                  <span>{formatPrice(subtotal)}</span>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="Coupon Code" 
+                    value={couponCode} 
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    disabled={appliedCoupon || isValidatingCoupon}
+                    className="h-9"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={appliedCoupon ? () => { setAppliedCoupon(null); setCouponCode(""); } : handleApplyCoupon}
+                    disabled={isValidatingCoupon || (!couponCode && !appliedCoupon)}
+                  >
+                    {appliedCoupon ? "Remove" : (isValidatingCoupon ? "..." : "Apply")}
+                  </Button>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Shipping</span>
-                  <span>{subtotal >= 99900 ? 'Free' : formatPrice(shipping)}</span>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Subtotal</span>
+                    <span>{formatPrice(subtotal)}</span>
+                  </div>
+                  {appliedCoupon && (
+                    <div className="flex justify-between text-sm text-green-600 font-medium">
+                      <span>Discount ({appliedCoupon.code})</span>
+                      <span>-{formatPrice(discountAmount)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Shipping</span>
+                    <span>{subtotal >= 99900 ? 'Free' : formatPrice(shipping)}</span>
+                  </div>
                 </div>
               </div>
               
               <Separator className="my-4" />
               
-              <div className="flex justify-between font-semibold">
+              <div className="flex justify-between font-semibold text-lg">
                 <span>Total</span>
                 <span>{formatPrice(total)}</span>
               </div>

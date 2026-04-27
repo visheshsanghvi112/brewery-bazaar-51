@@ -19,9 +19,13 @@ import Terms from "@/pages/Terms";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { CartProvider } from "@/contexts/CartContext";
+import { WishlistProvider } from "@/contexts/WishlistContext";
 import { PageLoader } from "@/components/ui/page-loader";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminCategories from "./pages/admin/Categories";
+import AboutUs from "@/pages/AboutUs";
+import Careers from "@/pages/Careers";
+import FinalSeed from "@/pages/FinalSeed";
 
 // Support pages
 import SupportHome from "@/pages/support/SupportHome";
@@ -68,41 +72,45 @@ function App() {
   return (
     <div className="min-h-screen flex flex-col">
       <CartProvider>
-        {!isAdminPage && <Navbar />}
-        
-        <main className="flex-1">
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/admin-login" element={<AdminLogin />} />
-              <Route path="/admin/*" element={<Admin />} />
-              <Route path="/admin/categories" element={<AdminCategories />} />
-              <Route path="/cart" element={<Cart />} />
-              <Route path="/contact" element={<Contact />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/products/:id" element={<ProductDetail />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/returns" element={<Returns />} />
-              <Route path="/search" element={<Search />} />
-              <Route path="/terms" element={<Terms />} />
-              
-              <Route path="/support" element={<SupportHome />} />
-              <Route path="/support/faqs" element={<FAQs />} />
-              <Route path="/support/shipping" element={<ShippingInfo />} />
-              <Route path="/support/returns" element={<ReturnsExchanges />} />
-              <Route path="/support/size-guide" element={<SizeGuide />} />
-              <Route path="/support/track-order" element={<TrackOrder />} />
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </main>
-        
-        {!hideFooter && <Footer />}
+        <WishlistProvider>
+          {!isAdminPage && <Navbar />}
+          
+          <main className="flex-1">
+            <Suspense fallback={<PageLoader />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/admin-login" element={<AdminLogin />} />
+                <Route path="/admin/*" element={<Admin />} />
+                <Route path="/about" element={<AboutUs />} />
+                <Route path="/careers" element={<Careers />} />
+                <Route path="/cart" element={<Cart />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/privacy" element={<Privacy />} />
+                <Route path="/products" element={<Products />} />
+                <Route path="/products/:id" element={<ProductDetail />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/returns" element={<Returns />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/terms" element={<Terms />} />
+                
+                <Route path="/support" element={<SupportHome />} />
+                <Route path="/support/faqs" element={<FAQs />} />
+                <Route path="/support/shipping" element={<ShippingInfo />} />
+                <Route path="/support/returns" element={<ReturnsExchanges />} />
+                <Route path="/support/size-guide" element={<SizeGuide />} />
+                <Route path="/support/track-order" element={<TrackOrder />} />
+                
+                <Route path="/final-seed" element={<FinalSeed />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </main>
+          
+          {!hideFooter && <Footer />}
+        </WishlistProvider>
       </CartProvider>
       
       <Toaster />

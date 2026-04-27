@@ -10,14 +10,19 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { Clock, ArrowRight, Search } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import { ArrowRight, Search, Package, Truck, CheckCircle2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { db } from "@/integrations/firebase/client";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { COLLECTIONS } from "@/lib/firebase/constants";
 
 const TrackOrder = () => {
   const { toast } = useToast();
   const [trackingNumber, setTrackingNumber] = useState("");
+  const [orderState, setOrderState] = useState<any>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const handleTrackOrder = (e: React.FormEvent) => {
+  const handleTrackOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!trackingNumber.trim()) {
       toast({
@@ -28,11 +33,38 @@ const TrackOrder = () => {
       return;
     }
     
-    // In a real app, this would connect to a shipping API
-    toast({
-      title: "Order Found",
-      description: `Tracking information for order #${trackingNumber} is being fetched.`,
-    });
+    setIsSearching(true);
+    try {
+      const ordersRef = collection(db, COLLECTIONS.ORDERS);
+      // Query where the 'id' field matches the tracking number
+      const q = query(ordersRef, where("id", "==", trackingNumber.trim()));
+      const snap = await getDocs(q);
+
+      if (snap.empty) {
+        setOrderState(null);
+        toast({
+          title: "Order Not Found",
+          description: "We couldn't find an order with that tracking number.",
+          variant: "destructive",
+        });
+      } else {
+        const orderDoc = snap.docs[0].data();
+        setOrderState(orderDoc);
+        toast({
+          title: "Order Found",
+          description: `Tracking information for order #${trackingNumber} retrieved.`,
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      toast({
+        title: "Tracker Offline",
+        description: "Unable to reach tracking systems. Try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const containerAnimation = {
@@ -48,6 +80,47 @@ const TrackOrder = () => {
   const itemAnimation = {
     hidden: { opacity: 0, y: 20 },
     visible: { opacity: 1, y: 0 },
+  };
+
+  const renderTrackerState = (status: string) => {
+    const isShipped = status === "Shipped" || status === "Delivered";
+    const isDelivered = status === "Delivered";
+    const isCancelled = status === "Cancelled";
+
+    if (isCancelled) {
+      return (
+        <div className="p-4 rounded-lg border-red-500/50 bg-red-500/10 text-red-500 text-center font-semibold">
+          This order has been cancelled.
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex flex-col md:flex-row justify-between items-center mt-8 space-y-6 md:space-y-0 relative">
+         <div className="hidden md:block absolute top-1/2 left-0 right-0 h-1 bg-border -translate-y-1/2 z-0" />
+         
+         <div className="relative z-10 flex flex-col items-center bg-card p-2 rounded-full text-primary">
+           <div className={`h-12 w-12 rounded-full flex items-center justify-center border-2 border-primary bg-primary/10`}>
+             <Package className="h-6 w-6" />
+           </div>
+           <span className="mt-2 text-sm font-medium">Processing</span>
+         </div>
+
+         <div className={`relative z-10 flex flex-col items-center bg-card p-2 rounded-full ${isShipped ? 'text-primary' : 'text-muted-foreground'}`}>
+           <div className={`h-12 w-12 rounded-full flex items-center justify-center border-2 ${isShipped ? 'border-primary bg-primary/10' : 'border-muted bg-muted'}`}>
+             <Truck className="h-6 w-6" />
+           </div>
+           <span className="mt-2 text-sm font-medium">Shipped</span>
+         </div>
+
+         <div className={`relative z-10 flex flex-col items-center bg-card p-2 rounded-full ${isDelivered ? 'text-primary' : 'text-muted-foreground'}`}>
+           <div className={`h-12 w-12 rounded-full flex items-center justify-center border-2 ${isDelivered ? 'border-primary bg-primary/10' : 'border-muted bg-muted'}`}>
+             <CheckCircle2 className="h-6 w-6" />
+           </div>
+           <span className="mt-2 text-sm font-medium">Delivered</span>
+         </div>
+      </div>
+    );
   };
 
   return (
@@ -70,22 +143,18 @@ const TrackOrder = () => {
               transition={{ duration: 0.5, delay: 0.1 }}
               className="text-lg text-muted-foreground mb-8"
             >
-              Enter your order number to track your shipment status.
+              Enter your order number to track your shipment status perfectly.
             </motion.p>
           </div>
         </div>
-        
-        {/* Decorative elements */}
-        <div className="absolute top-1/2 left-10 w-24 h-24 rounded-full bg-primary/5 animate-pulse-glow"></div>
-        <div className="absolute bottom-10 right-10 w-32 h-32 rounded-full bg-primary/5 animate-float"></div>
       </section>
 
       {/* Track Order Content */}
       <section className="py-16 container mx-auto px-4">
         <Card className="bg-card/50 backdrop-blur-sm border border-border/50">
           <CardHeader>
-            <CardTitle className="text-2xl">Track Your Order</CardTitle>
-            <CardDescription>Enter your order number to track your shipment.</CardDescription>
+            <CardTitle className="text-2xl">Search Gateway</CardTitle>
+            <CardDescription>Enter your exact BREW- order tag below.</CardDescription>
           </CardHeader>
           <CardContent>
             <motion.div
@@ -94,60 +163,45 @@ const TrackOrder = () => {
               animate="visible"
               className="space-y-8"
             >
-              <motion.div variants={itemAnimation} className="max-w-md mx-auto p-6 border rounded-lg bg-card/80">
-                <form onSubmit={handleTrackOrder} className="space-y-4">
-                  <div className="space-y-2">
-                    <label htmlFor="tracking-number" className="text-sm font-medium">
-                      Order/Tracking Number
-                    </label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                      <Input
-                        id="tracking-number"
-                        placeholder="e.g., ORD1234567890"
-                        className="pl-10"
-                        value={trackingNumber}
-                        onChange={(e) => setTrackingNumber(e.target.value)}
-                      />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <motion.div variants={itemAnimation} className="p-6 border rounded-lg bg-card/80 flex flex-col justify-center">
+                  <form onSubmit={handleTrackOrder} className="space-y-4">
+                    <div className="space-y-2">
+                      <label htmlFor="tracking-number" className="text-sm font-medium">
+                        Tracking Number
+                      </label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                        <Input
+                          id="tracking-number"
+                          placeholder="e.g., BREW-1234..."
+                          className="pl-10"
+                          value={trackingNumber}
+                          onChange={(e) => setTrackingNumber(e.target.value)}
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-primary hover:bg-primary/90 transition-colors"
-                  >
-                    Track Order
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </form>
-                
-                <div className="mt-6 pt-6 border-t text-sm text-muted-foreground">
-                  <p>
-                    Don't have your order number? Please check your order confirmation email or contact our customer service team.
-                  </p>
-                </div>
-              </motion.div>
+                    <Button 
+                      type="submit" 
+                      className="w-full transition-colors"
+                      disabled={isSearching}
+                    >
+                      {isSearching ? 'Scanning Network...' : 'Track Package'}
+                      {!isSearching && <ArrowRight className="ml-2 h-4 w-4" />}
+                    </Button>
+                  </form>
+                </motion.div>
 
-              <motion.div variants={itemAnimation} className="space-y-4">
-                <h3 className="text-lg font-semibold">Tracking FAQs</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 rounded-lg border bg-card/80">
-                    <h4 className="font-medium mb-2">When will I receive tracking information?</h4>
-                    <p className="text-sm text-muted-foreground">You will receive tracking information via email once your order has been shipped, typically within 24-48 hours after placing your order.</p>
-                  </div>
-                  <div className="p-4 rounded-lg border bg-card/80">
-                    <h4 className="font-medium mb-2">My tracking doesn't show any updates</h4>
-                    <p className="text-sm text-muted-foreground">It may take 24-48 hours after shipping for tracking information to become active. If you continue to see no updates after this time, please contact us.</p>
-                  </div>
-                  <div className="p-4 rounded-lg border bg-card/80">
-                    <h4 className="font-medium mb-2">I didn't receive a tracking number</h4>
-                    <p className="text-sm text-muted-foreground">Please check your spam or junk folder. If you still can't find it, you can view your tracking information in your account or contact our support team.</p>
-                  </div>
-                  <div className="p-4 rounded-lg border bg-card/80">
-                    <h4 className="font-medium mb-2">My package shows delivered but I don't have it</h4>
-                    <p className="text-sm text-muted-foreground">Please check with neighbors and around your delivery location. If you still can't locate it, contact our support team within 48 hours.</p>
-                  </div>
-                </div>
-              </motion.div>
+                {orderState && (
+                  <motion.div variants={itemAnimation} className="p-6 border rounded-lg bg-card/80">
+                    <h3 className="text-lg font-bold mb-4 border-b pb-2">Status Timeline</h3>
+                    <p className="text-sm text-muted-foreground">Order Date: {new Date(orderState.date || orderState.createdAt).toLocaleDateString()}</p>
+                    <p className="text-sm font-medium mt-1">Current Status: <span className="text-primary">{orderState.status}</span></p>
+                    
+                    {renderTrackerState(orderState.status)}
+                  </motion.div>
+                )}
+              </div>
             </motion.div>
           </CardContent>
         </Card>

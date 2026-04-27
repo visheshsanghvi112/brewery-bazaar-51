@@ -1,14 +1,31 @@
 
-import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useState, useEffect } from "react";
 import { useAdmin } from "@/contexts/AdminContext";
 import { ReturnsTabContent } from "@/components/admin/ReturnsTabContent";
 import { ReturnRequest, Order } from "@/types";
 import { calculateReturnAnalytics } from "@/utils/returnAnalytics";
-import { Tabs } from "@/components/ui/tabs"; // Add Tabs import
+import { Tabs } from "@/components/ui/tabs";
+import { db } from "@/integrations/firebase/client";
+import { collection, query, getDocs, orderBy } from "firebase/firestore";
 
 export default function AdminReturns() {
   const { orders } = useAdmin();
-  const [returnRequests] = useLocalStorage<ReturnRequest[]>("returnRequests", []);
+  const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
+  
+  useEffect(() => {
+    const fetchReturns = async () => {
+      try {
+        const returnsRef = collection(db, "returnRequests");
+        const q = query(returnsRef, orderBy("createdAt", "desc"));
+        const snapshot = await getDocs(q);
+        const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }) as ReturnRequest);
+        setReturnRequests(data);
+      } catch (e) {
+        console.error("Error fetching returns for analytics:", e);
+      }
+    };
+    fetchReturns();
+  }, []);
   
   // Calculate analytics for the header display
   const analytics = calculateReturnAnalytics(returnRequests, orders);
